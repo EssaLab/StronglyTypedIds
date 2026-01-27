@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace EssaLab.StronglyTypedIds.Gens.JsonConvertors;
 
@@ -15,110 +15,110 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // 1. مزود للكشف عن وجود System.Text.Json
-        var hasJsonLibrary = context.CompilationProvider.Select(static (compilation, _) =>
-            compilation.ReferencedAssemblyNames.Any(ai => ai.Name.Equals("System.Text.Json", StringComparison.OrdinalIgnoreCase)));
+        var usedTypeSymbols =
+            context.SyntaxProvider
+                .CreateSyntaxProvider(
+                    static (node, _) => node is IdentifierNameSyntax,
+                    static (ctx, _) =>
+                    {
+                        var symbol = ctx.SemanticModel.GetSymbolInfo(ctx.Node).Symbol;
+                        return symbol as INamedTypeSymbol;
+                    })
+                .Where(static s => s is not null)
+                .Select(static (s, _) => s!)
+                .Collect();
+        
+        var idTypes =
+            usedTypeSymbols.Combine(context.CompilationProvider)
+                .Select((data, _) =>
+                {
+                    var (types, compilation) = data;
 
-        // 2. المزود الرئيسي: فحص الـ Compilation بالكامل لاستخراج الـ IDs من المراجع
-        var idsFromReferences = context.CompilationProvider.Select(static (compilation, cancellationToken) =>
+                    var attr = compilation.GetTypeByMetadataName(AttributeFullName);
+                    var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
+
+                    if (attr is null || fingerprint is null)
+                        return ImmutableArray<IdJsonData>.Empty;
+
+                    var result = new List<IdJsonData>();
+
+                    foreach (var type in types.Distinct(SymbolEqualityComparer.Default))
+                    {
+                        if (type.ContainingAssembly is not IAssemblySymbol asm)
+                            continue;
+
+                        // هل هذا assembly فيه fingerprint؟
+                        var hasFp = asm.GetAttributes()
+                            .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint));
+
+                        if (!hasFp) continue;
+
+                        var attrData = type.GetAttributes()
+                            .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
+
+                        if (attrData is null) continue;
+
+                        var backing = GetBackingType(attrData);
+
+                        result.Add(new IdJsonData(
+                            type.Name,
+                            type.ContainingNamespace.ToDisplayString(),
+                            backing));
+                    }
+
+                    return result.ToImmutableArray();
+                });
+        
+        var hasJsonLibrary =
+            context.CompilationProvider.Select((c, _) =>
+                c.ReferencedAssemblyNames.Any(a => a.Name == "System.Text.Json"));
+
+        var pipeline = idTypes.Combine(hasJsonLibrary);
+
+        context.RegisterSourceOutput(pipeline, (spc, data) =>
         {
-            var foundIds = new List<IdJsonData>();
-            
-            // البحث عن رمز الأتريبيوت والبصمة لضمان أننا نبحث عن الشيء الصحيح
-            var idAttrSymbol = compilation.GetTypeByMetadataName(AttributeFullName);
-            var fingerprintSymbol = compilation.GetTypeByMetadataName(FingerprintFullName);
+            var ids = data.Left;
+            var hasJson = data.Right;
 
-            if (idAttrSymbol is null || fingerprintSymbol is null)
-                return (HasBase: false, Ids: ImmutableArray<IdJsonData>.Empty);
+            if (ids.IsDefaultOrEmpty)
+                return;
 
-            // نلف على كل الـ Assembly References (زي Domain Project)
-            foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
-            {
-                // هل هذا الريفرنس يحتوي على البصمة؟ (عشان منضيعش وقت في فحص System.dll وغيرها)
-                var hasFingerprint = reference.GetAttributes().Any(attr => 
-                    SymbolEqualityComparer.Default.Equals(attr.AttributeClass, fingerprintSymbol));
-
-                if (!hasFingerprint) continue;
-
-                // لو فيه البصمة، ندخل نجيب كل الـ StronglyTypedIds اللي جواه
-                GetIdsFromNamespace(reference.GlobalNamespace, idAttrSymbol, foundIds);
-            }
-
-            return (HasBase: true, Ids: foundIds.ToImmutableArray());
-        });
-
-        // 3. تجميع البيانات
-        var combined = idsFromReferences.Combine(hasJsonLibrary);
-
-        context.RegisterSourceOutput(combined, static (spc, source) =>
-        {
-            var ids = source.Left.Ids;
-            var hasJsonLib = source.Right;
-            var hasBaseInRefs = source.Left.HasBase;
-
-            // Diagnostics
-            if (!hasBaseInRefs && !ids.IsDefaultOrEmpty)
-            {
-                 // تحذير: وجدنا IDs بس مش لاقيين البصمة (حالة نادرة بس ممكنة)
-            }
-
-            if (!hasJsonLib && !ids.IsDefaultOrEmpty)
+            if (!hasJson)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor("STID002", "System.Text.Json Missing", "Add System.Text.Json reference.", "Setup", DiagnosticSeverity.Error, true),
+                    new DiagnosticDescriptor("STID002", "System.Text.Json Missing", "Add System.Text.Json reference.",
+                        "Setup", DiagnosticSeverity.Error, true),
                     Location.None));
                 return;
             }
 
-            if (ids.IsDefaultOrEmpty) return;
-
-            // 4. التوليد (نفس منطق الكود السابق)
             GenerateExtensionClass(spc, ids);
-            
+
             foreach (var id in ids)
-            {
                 GenerateStandaloneConverter(spc, id);
-            }
         });
     }
 
-    // دالة مساعدة (Recursive) للبحث داخل الـ Namespaces
-    private static void GetIdsFromNamespace(INamespaceSymbol namespaceSymbol, INamedTypeSymbol idAttrSymbol, List<IdJsonData> results)
+    private string GetBackingType(AttributeData attrData)
     {
-        // فحص الـ Types داخل الـ Namespace الحالي
-        foreach (var typeSymbol in namespaceSymbol.GetTypeMembers())
+        if (attrData.ConstructorArguments.Length == 0)
+            return "Guid";
+
+        var val = attrData.ConstructorArguments[0].Value;
+
+        var i = val switch
         {
-            var attrData = typeSymbol.GetAttributes().FirstOrDefault(attr => 
-                SymbolEqualityComparer.Default.Equals(attr.AttributeClass, idAttrSymbol));
+            int x => x,
+            _ => (int)val!
+        };
 
-            if (attrData is not null)
-            {
-                // استخراج نوع الـ ID (Guid, Int, Long) من الـ Attribute Constructor
-                int typeIndex = 0;
-                if (attrData.ConstructorArguments.Length > 0 && attrData.ConstructorArguments[0].Value is int val)
-                {
-                    typeIndex = val;
-                }
-                else if (attrData.ConstructorArguments.Length > 0 && attrData.ConstructorArguments[0].Value is object enumVal)
-                {
-                    // التعامل مع الـ Enum كـ int
-                    typeIndex = (int)enumVal;
-                }
-
-                string backingType = typeIndex switch { 1 => "int", 2 => "long", _ => "Guid" };
-                
-                results.Add(new IdJsonData(typeSymbol.Name, typeSymbol.ContainingNamespace.ToDisplayString(), backingType));
-            }
-        }
-
-        // البحث في الـ Namespaces الفرعية (Recursion)
-        foreach (var childNamespace in namespaceSymbol.GetNamespaceMembers())
+        return i switch
         {
-            GetIdsFromNamespace(childNamespace, idAttrSymbol, results);
-        }
+            1 => "int",
+            2 => "long",
+            _ => "Guid"
+        };
     }
-
-    // ... (نفس دوال GenerateStandaloneConverter و GenerateExtensionClass السابقة)
     
     private static void GenerateExtensionClass(SourceProductionContext spc, ImmutableArray<IdJsonData> ids)
     {
