@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using EssaLab.StronglyTypedIds.Gens.EFConvertors.Common.Models;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace EssaLab.StronglyTypedIds.Gens.EFConvertors;
 
@@ -15,94 +16,102 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // 1. مزود للكشف عن وجود EntityFrameworkCore
-        var hasEfCore = context.CompilationProvider.Select(static (compilation, _) =>
-            compilation.ReferencedAssemblyNames.Any(ai => ai.Name.Equals("Microsoft.EntityFrameworkCore", StringComparison.OrdinalIgnoreCase)));
-
-        // 2. المزود الرئيسي: فحص الـ Compilation بالكامل لاستخراج الـ IDs من المراجع
-        var idsFromReferences = context.CompilationProvider.Select(static (compilation, _) =>
-        {
-            var foundIds = new List<IdEfData>();
-            
-            var idAttrSymbol = compilation.GetTypeByMetadataName(AttributeFullName);
-            var fingerprintSymbol = compilation.GetTypeByMetadataName(FingerprintFullName);
-
-            if (idAttrSymbol is null || fingerprintSymbol is null)
-                return (HasBase: false, Ids: ImmutableArray<IdEfData>.Empty);
-
-            foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
+        var entityTypes = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is PropertyDeclarationSyntax { Type: GenericNameSyntax g } && g.Identifier.Text == "DbSet",
+                static (ctx, _) =>
+                {
+                    var propertySymbol = ctx.SemanticModel.GetDeclaredSymbol(ctx.Node) as IPropertySymbol;
+                    if (propertySymbol?.Type is INamedTypeSymbol namedType && namedType.TypeArguments.Length > 0)
+                    {
+                        return namedType.TypeArguments[0] as INamedTypeSymbol;
+                    }
+                    return null;
+                })
+            .Where(static s => s is not null)
+            .Select(static (s, _) => s!);
+    
+        
+        var idTypes = entityTypes.Combine(context.CompilationProvider)
+            .SelectMany(static (data, _) => 
             {
-                var hasFingerprint = reference.GetAttributes().Any(attr => 
-                    SymbolEqualityComparer.Default.Equals(attr.AttributeClass, fingerprintSymbol));
+                var (entityType, compilation) = data;
+                var attrSymbol = compilation.GetTypeByMetadataName(AttributeFullName);
+                var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
 
-                if (!hasFingerprint) continue;
+                if (attrSymbol is null || fingerprint is null) 
+                    return [];
 
-                GetIdsFromNamespace(reference.GlobalNamespace, idAttrSymbol, foundIds);
-            }
+                var idsInEntity = new List<IdEfData>();
 
-            return (HasBase: true, Ids: foundIds.ToImmutableArray());
-        });
+                foreach (var prop in entityType.GetMembers().OfType<IPropertySymbol>())
+                {
+                    if (prop.Type is INamedTypeSymbol propType)
+                    {
+                        var attrData = propType.GetAttributes()
+                            .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attrSymbol));
 
-        // 3. تجميع البيانات
-        var combined = idsFromReferences.Combine(hasEfCore);
-
-        context.RegisterSourceOutput(combined, static (spc, source) =>
+                        if (attrData != null)
+                        {
+                            var backingType = GetBackingTypeStatic(attrData); 
+                    
+                            idsInEntity.Add(new IdEfData(
+                                propType.Name,
+                                propType.ContainingNamespace?.IsGlobalNamespace == true ? null : propType.ContainingNamespace?.ToDisplayString(),
+                                backingType));
+                        }
+                    }
+                }
+                return idsInEntity;
+            })
+            .Collect()
+            .Select(static (allIds, _) => allIds.Distinct().ToImmutableArray());
+    
+        
+        var hasEfCore = context.CompilationProvider.Select((c, _) =>
+            c.ReferencedAssemblyNames.Any(a => a.Name == "Microsoft.EntityFrameworkCore"));
+    
+        
+        var pipeline = idTypes.Combine(hasEfCore);
+        context.RegisterSourceOutput(pipeline, (spc, data) =>
         {
-            var ids = source.Left.Ids;
-            var hasEfLib = source.Right;
-            var hasBaseInRefs = source.Left.HasBase;
-
+            var (ids, hasEf) = data;
             if (ids.IsDefaultOrEmpty) return;
-
-            // Diagnostics
-            if (!hasEfLib)
+    
+            if (!hasEf)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor("STID003", "EF Core Missing", "Please add a reference to Microsoft.EntityFrameworkCore to use EF converters.", "Setup", DiagnosticSeverity.Error, true),
+                    new DiagnosticDescriptor("STID003", "EF Core Missing", "Please add a reference to Microsoft.EntityFrameworkCore.", "Setup", DiagnosticSeverity.Error, true),
                     Location.None));
                 return;
             }
-
-            // 4. التوليد
+    
             GenerateExtensionClass(spc, ids);
-            
-            foreach (var id in ids)
-            {
-                GenerateStandaloneConverter(spc, id);
-            }
+            foreach (var id in ids) GenerateStandaloneConverter(spc, id);
         });
     }
-
-    private static void GetIdsFromNamespace(INamespaceSymbol namespaceSymbol, INamedTypeSymbol idAttrSymbol, List<IdEfData> results)
+    
+    private static string GetBackingTypeStatic(AttributeData attrData)
     {
-        foreach (var typeSymbol in namespaceSymbol.GetTypeMembers())
+        if (attrData.ConstructorArguments.Length == 0)
+            return "Guid";
+
+        var val = attrData.ConstructorArguments[0].Value;
+
+        var i = val switch
         {
-            var attrData = typeSymbol.GetAttributes().FirstOrDefault(attr => 
-                SymbolEqualityComparer.Default.Equals(attr.AttributeClass, idAttrSymbol));
+            int x => x,
+            _ => (int)val!
+        };
 
-            if (attrData is not null)
-            {
-                int typeIndex = 0;
-                if (attrData.ConstructorArguments.Length > 0 && attrData.ConstructorArguments[0].Value is int val)
-                {
-                    typeIndex = val;
-                }
-                else if (attrData.ConstructorArguments.Length > 0 && attrData.ConstructorArguments[0].Value is object enumVal)
-                {
-                    typeIndex = (int)enumVal;
-                }
-
-                string backingType = typeIndex switch { 1 => "int", 2 => "long", _ => "Guid" };
-                results.Add(new IdEfData(typeSymbol.Name, typeSymbol.ContainingNamespace.ToDisplayString(), backingType));
-            }
-        }
-
-        foreach (var childNamespace in namespaceSymbol.GetNamespaceMembers())
+        return i switch
         {
-            GetIdsFromNamespace(childNamespace, idAttrSymbol, results);
-        }
+            1 => "int",
+            2 => "long",
+            _ => "Guid"
+        };
     }
-
+    
     private static void GenerateExtensionClass(SourceProductionContext spc, ImmutableArray<IdEfData> ids)
     {
         var sb = new StringBuilder();
@@ -145,4 +154,3 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
     }
 }
 
-internal record struct IdEfData(string Name, string? Namespace, string BackingType);
