@@ -10,9 +10,9 @@ The solution is modular to respect Clean Architecture principles:
 
 | Package | Purpose | Layer |
 |---------|---------|-------|
-| **[EssaLab.StronglyTypedIds.Gens.Base](./src/EssaLab.StronglyTypedIds.Gens.Base/README.md)** | Core generator. Defines attributes and generates the ID structs/records. | **Domain** |
-| **[EssaLab.StronglyTypedIds.Gens.EFConvertors](./src/EssaLab.StronglyTypedIds.Gens.EFConvertors/README.md)** | Generates EF Core `ValueConverter` mappings. | **Infrastructure** |
-| **[EssaLab.StronglyTypedIds.Gens.JsonConvertors](./src/EssaLab.StronglyTypedIds.Gens.JsonConvertors/README.md)** | Generates `System.Text.Json` converters for API responses. | **Web/API** |
+| **[EssaLab.StronglyTypedIds.Core](./src/EssaLab.StronglyTypedIds.Core/README.md)** | Core generator. Defines attributes and generates the ID structs/records. | **Domain** |
+| **[EssaLab.StronglyTypedIds.Convertors.EFCore](./src/EssaLab.StronglyTypedIds.Convertors.EFCore/README.md)** | Generates EF Core `ValueConverter` mappings. | **Infrastructure** |
+| **[EssaLab.StronglyTypedIds.Convertors.Json](./src/EssaLab.StronglyTypedIds.Convertors.Json/README.md)** | Generates `System.Text.Json` converters for API responses. | **Web/API** |
 
 ## 💡 Why Strongly Typed IDs?
 
@@ -45,7 +45,7 @@ public void UpdateOrder(UserId userId, OrderId orderId)
 ## 🏁 Quick Start Guide
 
 ### 1. Domain Layer
-Install `EssaLab.StronglyTypedIds.Gens.Base`.
+Install `EssaLab.StronglyTypedIds.Core`.
 
 ```csharp
 using StronglyTypedIds;
@@ -58,7 +58,7 @@ public partial record ProductId;
 ```
 
 ### 2. Infrastructure Layer (EF Core)
-Install `EssaLab.StronglyTypedIds.Gens.EFConvertors`.
+Install `EssaLab.StronglyTypedIds.Convertors.EFCore`.
 
 ```csharp
 // AppDbContext.cs
@@ -70,7 +70,7 @@ protected override void ConfigureConventions(ModelConfigurationBuilder configura
 ```
 
 ### 3. API Layer (JSON)
-Install `EssaLab.StronglyTypedIds.Gens.JsonConvertors`.
+Install `EssaLab.StronglyTypedIds.Convertors.Json`.
 
 ```csharp
 // Program.cs
