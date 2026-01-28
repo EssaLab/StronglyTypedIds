@@ -1,4 +1,4 @@
-# EssaLab.StronglyTypedIds.Gens.EFConvertors
+# EssaLab.StronglyTypedIds.Convertors.EFCore
 
 **EF Core Source Generator** for `EssaLab.StronglyTypedIds`. This library automates the generation of Entity Framework Core `ValueConverter`s, allowing you to use strongly-typed IDs in your entities while storing them as primitives (Guid/int/long) in the database.
 
@@ -13,7 +13,7 @@
 Install the package via NuGet in your **Infrastructure/Data Access** project:
 
 ```bash
-dotnet add package EssaLab.StronglyTypedIds.Gens.EFConvertors
+dotnet add package EssaLab.StronglyTypedIds.Convertors.EFCore
 ```
 
 > **Note**: This project requires `Microsoft.EntityFrameworkCore` to be referenced.
@@ -24,7 +24,7 @@ dotnet add package EssaLab.StronglyTypedIds.Gens.EFConvertors
 Assumption: You have a **Domain** project (with IDs) and an **Infrastructure** project (with EF Core).
 
 - **Domain Project**: Installs `EssaLab.StronglyTypedIds.Gens.Base`. Defines `UserId`.
-- **Infrastructure Project**: References **Domain**. Installs `EssaLab.StronglyTypedIds.Gens.EFConvertors`.
+- **Infrastructure Project**: References **Domain**. Installs `EssaLab.StronglyTypedIds.Convertors.EFCore`.
 
 ### 2. Configure `DbContext`
 

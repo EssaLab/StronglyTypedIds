@@ -1,4 +1,4 @@
-# EssaLab.StronglyTypedIds.Gens.Base
+# EssaLab.StronglyTypedIds.Core
 
 **Core Source Generator** for creating strongly-typed IDs in .NET using the "Strongly Typed ID" pattern. This library automates the creation of immutable, comparable, and type-safe ID structs/records to prevent primitive obsession (e.g., mixing up `UserId` and `OrderId`).
 
@@ -15,7 +15,7 @@
 Install the package via NuGet:
 
 ```bash
-dotnet add package EssaLab.StronglyTypedIds.Gens.Base
+dotnet add package EssaLab.StronglyTypedIds.Core
 ```
 
 ## Usage

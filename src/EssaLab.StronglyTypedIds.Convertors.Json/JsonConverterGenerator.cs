@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace EssaLab.StronglyTypedIds.Gens.JsonConvertors;
+namespace EssaLab.StronglyTypedIds.Convertors.Json;
 
 [Generator]
 public sealed class JsonConverterGenerator : IIncrementalGenerator

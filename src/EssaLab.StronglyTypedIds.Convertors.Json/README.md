@@ -1,4 +1,4 @@
-# EssaLab.StronglyTypedIds.Gens.JsonConvertors
+# EssaLab.StronglyTypedIds.Convertors.Json
 
 **JSON Source Generator** for `EssaLab.StronglyTypedIds`. This library automates the generation of `System.Text.Json` converters, ensuring your strongly-typed IDs are serialized as their underlying primitive values (e.g., `"d2.."` or `123`) instead of complex objects.
 
@@ -13,7 +13,7 @@
 Install the package via NuGet in your **Web/API** project:
 
 ```bash
-dotnet add package EssaLab.StronglyTypedIds.Gens.JsonConvertors
+dotnet add package EssaLab.StronglyTypedIds.Convertors.Json
 ```
 
 > **Note**: This package currently supports `System.Text.Json`.

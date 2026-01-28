@@ -9,9 +9,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
-app.MapGet("/{id:int}", (OrderId id) =>
+app.MapGet("/", () =>
 {
   var orderId = OrderId.New();
+  var customerId = CustomerId.New();
   return Results.Ok(orderId);
 });
 

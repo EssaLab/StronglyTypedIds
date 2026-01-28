@@ -1,9 +1,9 @@
 ﻿using System.Text;
-using EssaLab.StronglyTypedIds.Gens.Base.Constants;
+using EssaLab.StronglyTypedIds.Core.Constants;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
-namespace EssaLab.StronglyTypedIds.Gens.Base.Generators;
+namespace EssaLab.StronglyTypedIds.Core.Generators;
 
 [Generator]
 internal sealed class StronglyTypedIdAttributeGenerator : IIncrementalGenerator

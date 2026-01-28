@@ -2,11 +2,11 @@
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
-using EssaLab.StronglyTypedIds.Gens.EFConvertors.Common.Models;
+using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace EssaLab.StronglyTypedIds.Gens.EFConvertors;
+namespace EssaLab.StronglyTypedIds.Convertors.EFCore;
 
 [Generator]
 public sealed class EfConverterGenerator : IIncrementalGenerator

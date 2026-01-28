@@ -1,10 +1,10 @@
 ﻿using System.Linq;
 using System.Text;
-using EssaLab.StronglyTypedIds.Gens.Base.Constants;
+using EssaLab.StronglyTypedIds.Core.Constants;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace EssaLab.StronglyTypedIds.Gens.Base.Generators;
+namespace EssaLab.StronglyTypedIds.Core.Generators;
 
 [Generator]
 public sealed class StronglyTypedIdGenerator : IIncrementalGenerator

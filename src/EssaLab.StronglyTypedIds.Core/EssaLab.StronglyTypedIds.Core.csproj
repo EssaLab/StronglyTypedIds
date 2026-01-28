@@ -12,7 +12,7 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
 
-    <PackageId>EssaLab.StronglyTypedIds.Gens.Base</PackageId>
+    <PackageId>EssaLab.StronglyTypedIds.Core</PackageId>
     <Title>EssaLab StronglyTypedIds Source Generator</Title>
     <Description>
       Core source generator that creates strongly-typed IDs (Guid, int, long) for DDD-style domain models.
@@ -32,6 +32,9 @@
     <RepositoryUrl>https://github.com/EssaLab/StronglyTypedIds</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <AssemblyName>EssaLab.StronglyTypedIds.Core</AssemblyName>
+    <RootNamespace>EssaLab.StronglyTypedIds.Core</RootNamespace>
+    <Product>EssaLab.StronglyTypedIds.Core</Product>
   </PropertyGroup>
 
   <ItemGroup>

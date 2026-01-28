@@ -1,4 +1,4 @@
-﻿namespace EssaLab.StronglyTypedIds.Gens.Base.Constants;
+﻿namespace EssaLab.StronglyTypedIds.Core.Constants;
 
 public static class BaseConstants
 {

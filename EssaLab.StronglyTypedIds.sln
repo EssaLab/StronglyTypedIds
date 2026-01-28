@@ -2,11 +2,11 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EssaLab.StronglyTypedIds.Gens.Base", "src\EssaLab.StronglyTypedIds.Gens.Base\EssaLab.StronglyTypedIds.Gens.Base.csproj", "{8A97328F-8B50-46D3-AE17-ABB7A3600E2A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EssaLab.StronglyTypedIds.Core", "src\EssaLab.StronglyTypedIds.Core\EssaLab.StronglyTypedIds.Core.csproj", "{8A97328F-8B50-46D3-AE17-ABB7A3600E2A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EssaLab.StronglyTypedIds.Gens.EFConvertors", "src\EssaLab.StronglyTypedIds.Gens.EFConvertors\EssaLab.StronglyTypedIds.Gens.EFConvertors.csproj", "{D48610A9-B205-4A52-A391-519924286225}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EssaLab.StronglyTypedIds.Convertors.EFCore", "src\EssaLab.StronglyTypedIds.Convertors.EFCore\EssaLab.StronglyTypedIds.Convertors.EFCore.csproj", "{D48610A9-B205-4A52-A391-519924286225}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EssaLab.StronglyTypedIds.Gens.JsonConvertors", "src\EssaLab.StronglyTypedIds.Gens.JsonConvertors\EssaLab.StronglyTypedIds.Gens.JsonConvertors.csproj", "{98E54794-8D7F-4A32-934D-FD49E21000F0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EssaLab.StronglyTypedIds.Convertors.Json", "src\EssaLab.StronglyTypedIds.Convertors.Json\EssaLab.StronglyTypedIds.Convertors.Json.csproj", "{98E54794-8D7F-4A32-934D-FD49E21000F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
