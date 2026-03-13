@@ -12,8 +12,7 @@ var app = builder.Build();
 app.MapGet("/", () =>
 {
   var orderId = OrderId.New();
-  var cutomerId = CustomerId.Empty;
-  return Results.Ok(new {id = orderId, cutomerId =  cutomerId});
+  return Results.Ok(new {id = orderId});
 });
 
 app.Run();

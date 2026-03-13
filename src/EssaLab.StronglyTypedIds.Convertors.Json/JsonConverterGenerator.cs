@@ -1,12 +1,17 @@
-﻿using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using EssaLab.StronglyTypedIds.Convertors.Json.Models;
+using EssaLab.StronglyTypedIds.Convertors.Json.Primitives;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace EssaLab.StronglyTypedIds.Convertors.Json;
 
+/// <summary>
+/// Incremental source generator for System.Text.Json converters for strongly-typed IDs.
+/// </summary>
 [Generator]
 public sealed class JsonConverterGenerator : IIncrementalGenerator
 {
@@ -15,97 +20,103 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-      var usedTypeSymbols =
-             context.SyntaxProvider
-                 .CreateSyntaxProvider(
-                     static (node, _) => node is IdentifierNameSyntax,
-                     static (ctx, _) =>
-                     {
-                         var symbol = ctx.SemanticModel.GetSymbolInfo(ctx.Node).Symbol;
-                         return symbol as INamedTypeSymbol;
-                     })
-                 .Where(static s => s is not null)
-                 .Select(static (s, _) => s!)
-                 .Collect();
-         
-         var idTypes =
-             usedTypeSymbols.Combine(context.CompilationProvider)
-                 .Select((data, _) =>
-                 {
-                     var (types, compilation) = data;
-      
-                     var attr = compilation.GetTypeByMetadataName(AttributeFullName);
-                     var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
-      
-                     if (attr is null || fingerprint is null)
-                         return ImmutableArray<IdJsonData>.Empty;
-      
-                     var result = new List<IdJsonData>();
-      
-                     foreach (var type in types.Distinct(SymbolEqualityComparer.Default))
-                     {
-                         if (type.ContainingAssembly is not IAssemblySymbol asm)
-                             continue;
-      
-                         // هل هذا assembly فيه fingerprint؟
-                         var hasFp = asm.GetAttributes()
-                             .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint));
-      
-                         if (!hasFp) continue;
-      
-                         var attrData = type.GetAttributes()
-                             .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
-      
-                         if (attrData is null) continue;
-      
-                         var backing = GetBackingType(attrData);
-      
-                         result.Add(new IdJsonData(
-                             type.Name,
-                             type.ContainingNamespace.ToDisplayString(),
-                             backing));
-                     }
-      
-                     return result.ToImmutableArray();
-                 });
-         
-         var hasJsonLibrary =
-             context.CompilationProvider.Select((c, _) =>
-                 c.ReferencedAssemblyNames.Any(a => a.Name == "System.Text.Json"));
-      
-         var pipeline = idTypes.Combine(hasJsonLibrary);
-      
-         context.RegisterSourceOutput(pipeline, (spc, data) =>
-         {
-             var ids = data.Left;
-             var hasJson = data.Right;
-      
-             if (ids.IsDefaultOrEmpty)
-                 return;
-      
-             if (!hasJson)
-             {
-                 spc.ReportDiagnostic(Diagnostic.Create(
-                     new DiagnosticDescriptor("STID002", "System.Text.Json Missing", "Add System.Text.Json reference.",
-                         "Setup", DiagnosticSeverity.Error, true),
-                     Location.None));
-                 return;
-             }
-      
-             GenerateExtensionClass(spc, ids);
-      
-             foreach (var id in ids)
-                 GenerateStandaloneConverter(spc, id);
-         });  
+        var typeReferences = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is TypeSyntax,
+                static (ctx, _) =>
+                {
+                    var symbol = ctx.SemanticModel.GetSymbolInfo(ctx.Node).Symbol as INamedTypeSymbol;
+                    if (symbol is null) return default;
+
+                    return new TypeReference(
+                        symbol.Name,
+                        symbol.ContainingNamespace.IsGlobalNamespace ? null : symbol.ContainingNamespace.ToDisplayString());
+                })
+            .Where(static r => r.Name is not null);
+
+        var idTypes = typeReferences.Collect().Combine(context.CompilationProvider)
+            .Select(static (data, _) =>
+            {
+                var (references, compilation) = data;
+
+                var attr = compilation.GetTypeByMetadataName(AttributeFullName);
+                var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
+
+                if (attr is null || fingerprint is null)
+                    return EquatableArray<IdJsonData>.Empty;
+
+                var result = new List<IdJsonData>();
+                var processed = new HashSet<TypeReference>();
+
+                foreach (var reference in references)
+                {
+                    if (!processed.Add(reference)) continue;
+
+                    var fullName = reference.Namespace is null ? reference.Name : $"{reference.Namespace}.{reference.Name}";
+                    var type = compilation.GetTypeByMetadataName(fullName);
+                    if (type is null) continue;
+
+                    if (type.ContainingAssembly is not IAssemblySymbol asm)
+                        continue;
+
+                    var hasFp = asm.GetAttributes()
+                        .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint));
+
+                    if (!hasFp) continue;
+
+                    var attrData = type.GetAttributes()
+                        .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
+
+                    if (attrData is null) continue;
+
+                    var backing = GetBackingType(attrData);
+
+                    result.Add(new IdJsonData(
+                        type.Name,
+                        type.ContainingNamespace.IsGlobalNamespace ? null : type.ContainingNamespace.ToDisplayString(),
+                        backing));
+                }
+
+                return new EquatableArray<IdJsonData>(result.ToArray());
+            });
+
+        var hasJsonLibrary = context.CompilationProvider.Select(static (c, _) =>
+            c.ReferencedAssemblyNames.Any(a => a.Name == "System.Text.Json"));
+
+        var pipeline = idTypes.Combine(hasJsonLibrary);
+
+        context.RegisterSourceOutput(pipeline, static (spc, data) =>
+        {
+            var ids = data.Left;
+            var hasJson = data.Right;
+
+            if (ids.Count == 0)
+                return;
+
+            if (!hasJson)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor("STID002", "System.Text.Json Missing", "Add System.Text.Json reference.",
+                        "Setup", DiagnosticSeverity.Error, true),
+                    Location.None));
+                return;
+            }
+
+            GenerateExtensionClass(spc, ids);
+
+            foreach (var id in ids)
+            {
+                GenerateStandaloneConverter(spc, id);
+            }
+        });
     }
 
-    private string GetBackingType(AttributeData attrData)
+    private static string GetBackingType(AttributeData attrData)
     {
         if (attrData.ConstructorArguments.Length == 0)
             return "Guid";
 
         var val = attrData.ConstructorArguments[0].Value;
-
         var i = val switch
         {
             int x => x,
@@ -119,23 +130,30 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
             _ => "Guid"
         };
     }
-    
-    private static void GenerateExtensionClass(SourceProductionContext spc, ImmutableArray<IdJsonData> ids)
+
+    private static void GenerateExtensionClass(SourceProductionContext spc, EquatableArray<IdJsonData> ids)
     {
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
         sb.AppendLine("using System.Text.Json;");
         sb.AppendLine("using System.Text.Json.Serialization;");
         sb.AppendLine();
         sb.AppendLine("namespace EssaLab.StronglyTypedIds.Convertors.Json;");
         sb.AppendLine();
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine("/// Extension methods for registering strongly-typed ID JSON converters.");
+        sb.AppendLine("/// </summary>");
         sb.AppendLine("public static class StronglyTypedIdJsonExtensions");
         sb.AppendLine("{");
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// Adds converters for all identified strongly-typed IDs to the <see cref=\"JsonSerializerOptions\"/>.");
+        sb.AppendLine("    /// </summary>");
         sb.AppendLine("    public static void AddStronglyTypedIdConverters(this JsonSerializerOptions options)");
         sb.AppendLine("    {");
         foreach (var id in ids)
         {
-            sb.AppendLine($"        options.Converters.Add(new {id.Namespace}.{id.Name}JsonConverter());");
+            sb.AppendLine($"        options.Converters.Add(new {(id.Namespace is null ? "" : id.Namespace + ".")}{id.Name}JsonConverter());");
         }
         sb.AppendLine("    }");
         sb.AppendLine("}");
@@ -144,36 +162,46 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
 
     private static void GenerateStandaloneConverter(SourceProductionContext spc, IdJsonData data)
     {
-         // نفس كود التوليد الذي كتبناه سابقاً تماماً
-         // ...
-         var sb = new StringBuilder();
-         var converterName = $"{data.Name}JsonConverter";
-         sb.AppendLine($"// <auto-generated/>");
-         sb.AppendLine($"using System;");
-         sb.AppendLine($"using System.Text.Json;");
-         sb.AppendLine($"using System.Text.Json.Serialization;");
-         sb.AppendLine();
-         sb.AppendLine($"namespace {data.Namespace ?? " EssaLab.StronglyTypedIds.Convertors.Json"};"); // استخدم namespace الـ ID الأصلي
-         sb.AppendLine();
-         sb.AppendLine($"internal sealed class {converterName} : JsonConverter<{data.Name}>");
-         sb.AppendLine($"{{");
-         // ... Read Method ...
-         sb.AppendLine($"    public override {data.Name} Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)");
-         sb.AppendLine($"    {{");
-         if(data.BackingType == "Guid") sb.AppendLine($"        return new {data.Name}(reader.GetGuid());");
-         else if(data.BackingType == "int") sb.AppendLine($"        return new {data.Name}(reader.GetInt32());");
-         else sb.AppendLine($"        return new {data.Name}(reader.GetInt64());");
-         sb.AppendLine($"    }}");
-         // ... Write Method ...
-         sb.AppendLine($"    public override void Write(Utf8JsonWriter writer, {data.Name} value, JsonSerializerOptions options)");
-         sb.AppendLine($"    {{");
-         if(data.BackingType == "Guid") sb.AppendLine($"        writer.WriteStringValue(value.Value);");
-         else sb.AppendLine($"        writer.WriteNumberValue(value.Value);");
-         sb.AppendLine($"    }}");
-         sb.AppendLine($"}}");
-         
-         spc.AddSource($"{data.Name}.JsonConverter.g.cs", sb.ToString());
+        var sb = new StringBuilder();
+        var converterName = $"{data.Name}JsonConverter";
+        sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine("using System;");
+        sb.AppendLine("using System.Text.Json;");
+        sb.AppendLine("using System.Text.Json.Serialization;");
+        sb.AppendLine();
+        sb.AppendLine($"namespace {data.Namespace ?? "EssaLab.StronglyTypedIds.Convertors.Json"};");
+        sb.AppendLine();
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine($"/// JSON converter for <see cref=\"{(data.Namespace is null ? "" : data.Namespace + ".")}{data.Name}\"/>.");
+        sb.AppendLine("/// </summary>");
+        sb.AppendLine($"internal sealed class {converterName} : JsonConverter<{data.Name}>");
+        sb.AppendLine("{");
+        
+        // Read
+        sb.AppendLine($"    public override {data.Name} Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)");
+        sb.AppendLine("    {");
+        if (data.BackingType == "Guid")
+            sb.AppendLine($"        return new {data.Name}(reader.GetGuid());");
+        else if (data.BackingType == "int")
+            sb.AppendLine($"        return new {data.Name}(reader.GetInt32());");
+        else
+            sb.AppendLine($"        return new {data.Name}(reader.GetInt64());");
+        sb.AppendLine("    }");
+
+        // Write
+        sb.AppendLine();
+        sb.AppendLine($"    public override void Write(Utf8JsonWriter writer, {data.Name} value, JsonSerializerOptions options)");
+        sb.AppendLine("    {");
+        if (data.BackingType == "Guid")
+            sb.AppendLine("        writer.WriteStringValue(value.Value);");
+        else
+            sb.AppendLine("        writer.WriteNumberValue(value.Value);");
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+
+        spc.AddSource($"{data.Name}.JsonConverter.g.cs", sb.ToString());
     }
 }
 
-internal record struct IdJsonData(string Name, string? Namespace, string BackingType);
+internal record struct IdJsonData(string Name, string? Namespace, string BackingType) : IEquatable<IdJsonData>;

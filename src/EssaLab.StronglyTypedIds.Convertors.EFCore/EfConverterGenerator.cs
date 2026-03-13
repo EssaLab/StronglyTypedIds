@@ -1,13 +1,16 @@
 ﻿using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Models;
+using EssaLab.StronglyTypedIds.Convertors.EFCore.Primitives;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace EssaLab.StronglyTypedIds.Convertors.EFCore;
 
+/// <summary>
+/// Incremental source generator for EF Core Value Converters for strongly-typed IDs.
+/// </summary>
 [Generator]
 public sealed class EfConverterGenerator : IIncrementalGenerator
 {
@@ -16,64 +19,71 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var entityTypes = context.SyntaxProvider.CreateSyntaxProvider(
-            predicate: static (node, _) => node is PropertyDeclarationSyntax { Type: GenericNameSyntax
-            {
-                Identifier.Text: "DbSet",
-            }},
+        var entityReferences = context.SyntaxProvider.CreateSyntaxProvider(
+            predicate: static (node, _) => node is PropertyDeclarationSyntax { Type: GenericNameSyntax { Identifier.Text: "DbSet" } },
             transform: static (ctx, _) =>
             {
                 var prop = (IPropertySymbol?)ctx.SemanticModel.GetDeclaredSymbol(ctx.Node);
-                return (prop?.Type as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
+                var entityType = (prop?.Type as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
+                if (entityType is null) return default;
+
+                return new EntityReference(
+                    entityType.Name,
+                    entityType.ContainingNamespace.IsGlobalNamespace ? null : entityType.ContainingNamespace.ToDisplayString());
             })
-            .Where(static t => t is not null)
-            .Select(static (t,_) => t!);
-       
-        var idsFromEntities =
-            entityTypes.Combine(context.CompilationProvider)
-                .SelectMany(static (data, _) => ExtractIds(data.Left, data.Right));
-        
-        var uniqueIds = idsFromEntities.Collect()
-            .Select(static (all, _) => all.GroupBy(x => x.Key).Select(g => g.First()).ToImmutableArray());
-        
-        var hasEfCore =
-            context.CompilationProvider.Select(static (c, _) =>
-                c.ReferencedAssemblyNames.Any(a => a.Name == "Microsoft.EntityFrameworkCore"));
+            .Where(static r => r.Name is not null);
 
-        context.RegisterSourceOutput(
-            uniqueIds.Combine(hasEfCore),
-            (spc, data) =>
+        var idsFromEntities = entityReferences.Combine(context.CompilationProvider)
+            .SelectMany(static (data, _) =>
             {
-                var (ids, hasEf) = data;
-                
-                if (ids.IsDefaultOrEmpty)
-                    return;
+                var (reference, compilation) = data;
+                var fullName = reference.Namespace is null ? reference.Name : $"{reference.Namespace}.{reference.Name}";
+                var entityType = compilation.GetTypeByMetadataName(fullName);
+                if (entityType is null) return Enumerable.Empty<IdEfData>();
 
-                if (!hasEf)
-                {
-                    spc.ReportDiagnostic(
-                        Diagnostic.Create(
-                            new DiagnosticDescriptor(
-                                "STID003",
-                                "EF Core Missing",
-                                "Please add a reference to Microsoft.EntityFrameworkCore.",
-                                "Setup",
-                                DiagnosticSeverity.Error,
-                                true),
-                            Location.None));
-                }
-                
-                GenerateExtensionClass(spc, ids);
-                foreach (var id in ids)
-                    GenerateStandaloneConverter(spc, id);
+                return ExtractIds(entityType, compilation);
             });
 
-        
+        var uniqueIds = idsFromEntities.Collect()
+            .Select(static (all, _) =>
+            {
+                var unique = all.GroupBy(x => x.Key).Select(g => g.First()).ToArray();
+                return new EquatableArray<IdEfData>(unique);
+            });
+
+        var hasEfCore = context.CompilationProvider.Select(static (c, _) =>
+            c.ReferencedAssemblyNames.Any(a => a.Name == "Microsoft.EntityFrameworkCore"));
+
+        context.RegisterSourceOutput(uniqueIds.Combine(hasEfCore), static (spc, data) =>
+        {
+            var (ids, hasEf) = data;
+
+            if (ids.Count == 0)
+                return;
+
+            if (!hasEf)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "STID003",
+                        "EF Core Missing",
+                        "Please add a reference to Microsoft.EntityFrameworkCore.",
+                        "Setup",
+                        DiagnosticSeverity.Error,
+                        true),
+                    Location.None));
+                return;
+            }
+
+            GenerateExtensionClass(spc, ids);
+            foreach (var id in ids)
+            {
+                GenerateStandaloneConverter(spc, id);
+            }
+        });
     }
 
-    private static IEnumerable<IdEfData> ExtractIds(
-        ITypeSymbol entity,
-        Compilation compilation)
+    private static IEnumerable<IdEfData> ExtractIds(ITypeSymbol entity, Compilation compilation)
     {
         var attr = compilation.GetTypeByMetadataName(AttributeFullName);
         var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
@@ -86,9 +96,15 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
             if (prop.Type is not INamedTypeSymbol propType)
                 continue;
 
+            // Verify if the assembly of the type has the fingerprint
+            if (propType.ContainingAssembly is not IAssemblySymbol asm || 
+                !asm.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint)))
+            {
+                continue;
+            }
+
             var attrData = propType.GetAttributes()
-                .FirstOrDefault(a =>
-                    SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
+                .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
 
             if (attrData is null)
                 continue;
@@ -96,13 +112,10 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
             yield return new IdEfData(
                 new IdKey(
                     propType.Name,
-                    propType.ContainingNamespace.IsGlobalNamespace
-                        ? null
-                        : propType.ContainingNamespace.ToDisplayString()),
+                    propType.ContainingNamespace.IsGlobalNamespace ? null : propType.ContainingNamespace.ToDisplayString()),
                 GetBackingTypeStatic(attrData));
         }
     }
-
 
     private static string GetBackingTypeStatic(AttributeData attrData)
     {
@@ -110,7 +123,6 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
             return "Guid";
 
         var val = attrData.ConstructorArguments[0].Value;
-
         var i = val switch
         {
             int x => x,
@@ -124,22 +136,29 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
             _ => "Guid"
         };
     }
-    
-    private static void GenerateExtensionClass(SourceProductionContext spc, ImmutableArray<IdEfData> ids)
+
+    private static void GenerateExtensionClass(SourceProductionContext spc, EquatableArray<IdEfData> ids)
     {
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
         sb.AppendLine("using Microsoft.EntityFrameworkCore;");
         sb.AppendLine();
-        sb.AppendLine("namespace  EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;");
+        sb.AppendLine("namespace EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;");
         sb.AppendLine();
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine("/// Extension methods for registering strongly-typed ID converters in EF Core.");
+        sb.AppendLine("/// </summary>");
         sb.AppendLine("public static class StronglyTypedIdEfExtensions");
         sb.AppendLine("{");
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// Configures all identified strongly-typed IDs to use their corresponding value converters.");
+        sb.AppendLine("    /// </summary>");
         sb.AppendLine("    public static void AddStronglyTypedIdConventions(this ModelConfigurationBuilder configurationBuilder)");
         sb.AppendLine("    {");
         foreach (var id in ids)
         {
-            sb.AppendLine($"        configurationBuilder.Properties<{id.Key.Namespace}.{id.Key.Name}>().HaveConversion<{id.Key.Namespace}.{id.Key.Name}EfConverter>();");
+            sb.AppendLine($"        configurationBuilder.Properties<{(id.Key.Namespace is null ? "" : id.Key.Namespace + ".")}{id.Key.Name}>().HaveConversion<{(id.Key.Namespace is null ? "" : id.Key.Namespace + ".")}{id.Key.Name}EfConverter>();");
         }
         sb.AppendLine("    }");
         sb.AppendLine("}");
@@ -148,22 +167,26 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
 
     private static void GenerateStandaloneConverter(SourceProductionContext spc, IdEfData data)
     {
-         var sb = new StringBuilder();
-         var converterName = $"{data.Key.Name}EfConverter";
-         sb.AppendLine("// <auto-generated/>");
-         sb.AppendLine("using Microsoft.EntityFrameworkCore.Storage.ValueConversion;");
-         sb.AppendLine();
-         sb.AppendLine($"namespace {data.Key.Namespace ?? "EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore"};");
-         sb.AppendLine();
-         sb.AppendLine($"internal sealed class {converterName} : ValueConverter<{data.Key.Name}, {data.BackingType}>");
-         sb.AppendLine("{");
-         sb.AppendLine($"    public {converterName}() : base(");
-         sb.AppendLine($"        id => id.Value,");
-         sb.AppendLine($"        value => new {data.Key.Name}(value))");
-         sb.AppendLine("    { }");
-         sb.AppendLine("}");
-         
-         spc.AddSource($"{data.Key.Name}.EfConverter.g.cs", sb.ToString());
+        var sb = new StringBuilder();
+        var converterName = $"{data.Key.Name}EfConverter";
+        sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine("using Microsoft.EntityFrameworkCore.Storage.ValueConversion;");
+        sb.AppendLine();
+        sb.AppendLine($"namespace {data.Key.Namespace ?? "EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore"};");
+        sb.AppendLine();
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine($"/// EF Core ValueConverter for <see cref=\"{(data.Key.Namespace is null ? "" : data.Key.Namespace + ".")}{data.Key.Name}\"/>.");
+        sb.AppendLine("/// </summary>");
+        sb.AppendLine($"internal sealed class {converterName} : ValueConverter<{data.Key.Name}, {data.BackingType}>");
+        sb.AppendLine("{");
+        sb.AppendLine($"    public {converterName}() : base(");
+        sb.AppendLine($"        static id => id.Value,");
+        sb.AppendLine($"        static value => new {data.Key.Name}(value))");
+        sb.AppendLine("    { }");
+        sb.AppendLine("}");
+
+        spc.AddSource($"{data.Key.Name}.EfConverter.g.cs", sb.ToString());
     }
 }
 

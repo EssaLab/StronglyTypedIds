@@ -8,8 +8,8 @@ namespace TestApp.Infrastructure;
 
 public class AppDbContext : DbContext
 {
-    // public DbSet<Order> Orders { get; init; }
-    public DbSet<Customer> Customers { get; init; }
+    public DbSet<Order> Orders { get; init; }
+    // public DbSet<Customer> Customers { get; init; }
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
