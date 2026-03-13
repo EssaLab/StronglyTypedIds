@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="EssaLab.StronglyTypedIds.Gens.JsonConvertors" Version="1.0.0">
+    <PackageReference Include="EssaLab.StronglyTypedIds.Convertors.Json" Version="1.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

@@ -6,3 +6,4 @@ public class Order
     public DateTime OrderDate { get; init; }
     public CustomerId CustomerId { get; init; }
 }
+

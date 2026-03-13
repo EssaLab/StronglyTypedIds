@@ -10,93 +10,93 @@ namespace EssaLab.StronglyTypedIds.Convertors.Json;
 [Generator]
 public sealed class JsonConverterGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = "StronglyTypedIds.StronglyTypedIdAttribute";
-    private const string FingerprintFullName = "StronglyTypedIds._StronglyTypedIdsBaseGenerated";
+    private const string AttributeFullName = "EssaLab.StronglyTypedIds.Core.StronglyTypedIdAttribute";
+    private const string FingerprintFullName = "EssaLab.StronglyTypedIds.Core._StronglyTypedIdsBaseGenerated";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var usedTypeSymbols =
-            context.SyntaxProvider
-                .CreateSyntaxProvider(
-                    static (node, _) => node is IdentifierNameSyntax,
-                    static (ctx, _) =>
-                    {
-                        var symbol = ctx.SemanticModel.GetSymbolInfo(ctx.Node).Symbol;
-                        return symbol as INamedTypeSymbol;
-                    })
-                .Where(static s => s is not null)
-                .Select(static (s, _) => s!)
-                .Collect();
-        
-        var idTypes =
-            usedTypeSymbols.Combine(context.CompilationProvider)
-                .Select((data, _) =>
-                {
-                    var (types, compilation) = data;
-
-                    var attr = compilation.GetTypeByMetadataName(AttributeFullName);
-                    var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
-
-                    if (attr is null || fingerprint is null)
-                        return ImmutableArray<IdJsonData>.Empty;
-
-                    var result = new List<IdJsonData>();
-
-                    foreach (var type in types.Distinct(SymbolEqualityComparer.Default))
-                    {
-                        if (type.ContainingAssembly is not IAssemblySymbol asm)
-                            continue;
-
-                        // هل هذا assembly فيه fingerprint؟
-                        var hasFp = asm.GetAttributes()
-                            .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint));
-
-                        if (!hasFp) continue;
-
-                        var attrData = type.GetAttributes()
-                            .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
-
-                        if (attrData is null) continue;
-
-                        var backing = GetBackingType(attrData);
-
-                        result.Add(new IdJsonData(
-                            type.Name,
-                            type.ContainingNamespace.ToDisplayString(),
-                            backing));
-                    }
-
-                    return result.ToImmutableArray();
-                });
-        
-        var hasJsonLibrary =
-            context.CompilationProvider.Select((c, _) =>
-                c.ReferencedAssemblyNames.Any(a => a.Name == "System.Text.Json"));
-
-        var pipeline = idTypes.Combine(hasJsonLibrary);
-
-        context.RegisterSourceOutput(pipeline, (spc, data) =>
-        {
-            var ids = data.Left;
-            var hasJson = data.Right;
-
-            if (ids.IsDefaultOrEmpty)
-                return;
-
-            if (!hasJson)
-            {
-                spc.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor("STID002", "System.Text.Json Missing", "Add System.Text.Json reference.",
-                        "Setup", DiagnosticSeverity.Error, true),
-                    Location.None));
-                return;
-            }
-
-            GenerateExtensionClass(spc, ids);
-
-            foreach (var id in ids)
-                GenerateStandaloneConverter(spc, id);
-        });
+      var usedTypeSymbols =
+             context.SyntaxProvider
+                 .CreateSyntaxProvider(
+                     static (node, _) => node is IdentifierNameSyntax,
+                     static (ctx, _) =>
+                     {
+                         var symbol = ctx.SemanticModel.GetSymbolInfo(ctx.Node).Symbol;
+                         return symbol as INamedTypeSymbol;
+                     })
+                 .Where(static s => s is not null)
+                 .Select(static (s, _) => s!)
+                 .Collect();
+         
+         var idTypes =
+             usedTypeSymbols.Combine(context.CompilationProvider)
+                 .Select((data, _) =>
+                 {
+                     var (types, compilation) = data;
+      
+                     var attr = compilation.GetTypeByMetadataName(AttributeFullName);
+                     var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
+      
+                     if (attr is null || fingerprint is null)
+                         return ImmutableArray<IdJsonData>.Empty;
+      
+                     var result = new List<IdJsonData>();
+      
+                     foreach (var type in types.Distinct(SymbolEqualityComparer.Default))
+                     {
+                         if (type.ContainingAssembly is not IAssemblySymbol asm)
+                             continue;
+      
+                         // هل هذا assembly فيه fingerprint؟
+                         var hasFp = asm.GetAttributes()
+                             .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint));
+      
+                         if (!hasFp) continue;
+      
+                         var attrData = type.GetAttributes()
+                             .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
+      
+                         if (attrData is null) continue;
+      
+                         var backing = GetBackingType(attrData);
+      
+                         result.Add(new IdJsonData(
+                             type.Name,
+                             type.ContainingNamespace.ToDisplayString(),
+                             backing));
+                     }
+      
+                     return result.ToImmutableArray();
+                 });
+         
+         var hasJsonLibrary =
+             context.CompilationProvider.Select((c, _) =>
+                 c.ReferencedAssemblyNames.Any(a => a.Name == "System.Text.Json"));
+      
+         var pipeline = idTypes.Combine(hasJsonLibrary);
+      
+         context.RegisterSourceOutput(pipeline, (spc, data) =>
+         {
+             var ids = data.Left;
+             var hasJson = data.Right;
+      
+             if (ids.IsDefaultOrEmpty)
+                 return;
+      
+             if (!hasJson)
+             {
+                 spc.ReportDiagnostic(Diagnostic.Create(
+                     new DiagnosticDescriptor("STID002", "System.Text.Json Missing", "Add System.Text.Json reference.",
+                         "Setup", DiagnosticSeverity.Error, true),
+                     Location.None));
+                 return;
+             }
+      
+             GenerateExtensionClass(spc, ids);
+      
+             foreach (var id in ids)
+                 GenerateStandaloneConverter(spc, id);
+         });  
     }
 
     private string GetBackingType(AttributeData attrData)
@@ -127,7 +127,7 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Text.Json;");
         sb.AppendLine("using System.Text.Json.Serialization;");
         sb.AppendLine();
-        sb.AppendLine("namespace StronglyTypedIds.Json;");
+        sb.AppendLine("namespace EssaLab.StronglyTypedIds.Convertors.Json;");
         sb.AppendLine();
         sb.AppendLine("public static class StronglyTypedIdJsonExtensions");
         sb.AppendLine("{");
@@ -153,7 +153,7 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
          sb.AppendLine($"using System.Text.Json;");
          sb.AppendLine($"using System.Text.Json.Serialization;");
          sb.AppendLine();
-         sb.AppendLine($"namespace {data.Namespace ?? "StronglyTypedIds.Json"};"); // استخدم namespace الـ ID الأصلي
+         sb.AppendLine($"namespace {data.Namespace ?? " EssaLab.StronglyTypedIds.Convertors.Json"};"); // استخدم namespace الـ ID الأصلي
          sb.AppendLine();
          sb.AppendLine($"internal sealed class {converterName} : JsonConverter<{data.Name}>");
          sb.AppendLine($"{{");

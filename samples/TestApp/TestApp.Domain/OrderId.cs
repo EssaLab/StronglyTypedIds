@@ -1,15 +1,20 @@
-﻿using StronglyTypedIds;
+﻿// using EssaLab.StronglyTypedIds.Core;
+
+using EssaLab.StronglyTypedIds.Core;
 
 namespace TestApp.Domain;
 
 [StronglyTypedId]
 public partial record OrderId;
 
-[StronglyTypedId]
+[StronglyTypedId(IdType.Long)]
 public partial record CustomerId;
 
-[StronglyTypedId]
+// [StronglyTypedId]
 public partial record CardId;
 
-[StronglyTypedId(IdType.Long)]
+// [StronglyTypedId(IdType.Long)]
 public partial record ItemId;
+
+// [StronglyTypedId(IdType.Long)]
+public partial record MohammedId();
