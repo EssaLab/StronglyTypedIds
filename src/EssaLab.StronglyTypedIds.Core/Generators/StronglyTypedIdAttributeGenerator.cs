@@ -9,7 +9,7 @@ namespace EssaLab.StronglyTypedIds.Core.Generators;
 /// Incremental source generator for the [StronglyTypedId] attribute.
 /// </summary>
 [Generator]
-internal sealed class StronglyTypedIdAttributeGenerator : IIncrementalGenerator
+public sealed class StronglyTypedIdAttributeGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
