@@ -1,5 +1,4 @@
-﻿// using EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;
-
+﻿
 using EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TestApp.Domain;

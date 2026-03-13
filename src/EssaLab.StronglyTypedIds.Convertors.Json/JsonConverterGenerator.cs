@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using EssaLab.StronglyTypedIds.Convertors.Json.Models;
-using EssaLab.StronglyTypedIds.Convertors.Json.Primitives;
+using EssaLab.StronglyTypedIds.Convertors.Json.Common.Diagnostics;
+using EssaLab.StronglyTypedIds.Convertors.Json.Common.Models;
+using EssaLab.StronglyTypedIds.Convertors.Json.Common.Primitives;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -96,8 +97,7 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
             if (!hasJson)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor("STID002", "System.Text.Json Missing", "Add System.Text.Json reference.",
-                        "Setup", DiagnosticSeverity.Error, true),
+                    JsonConverterDiagnostics.JsonLibraryMissing,
                     Location.None));
                 return;
             }
@@ -200,7 +200,7 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
         sb.AppendLine("    }");
         sb.AppendLine("}");
 
-        spc.AddSource($"{data.Name}.JsonConverter.g.cs", sb.ToString());
+        spc.AddSource($"{(data.Namespace is null ? "" : data.Namespace + ".")}{data.Name}.JsonConverter.g.cs", sb.ToString());
     }
 }
 

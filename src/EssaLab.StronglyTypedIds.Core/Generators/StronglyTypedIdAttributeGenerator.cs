@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using EssaLab.StronglyTypedIds.Core.Constants;
+using EssaLab.StronglyTypedIds.Core.Common.Constants;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 

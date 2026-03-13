@@ -1,6 +1,6 @@
 using System;
 
-namespace EssaLab.StronglyTypedIds.Convertors.Json.Models;
+namespace EssaLab.StronglyTypedIds.Convertors.Json.Common.Models;
 
 internal record struct TypeReference(string Name, string? Namespace) : IEquatable<TypeReference>;
 

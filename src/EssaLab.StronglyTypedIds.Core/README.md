@@ -1,84 +1,38 @@
 # EssaLab.StronglyTypedIds.Core
 
-**Core Source Generator** for creating strongly-typed IDs in .NET using the "Strongly Typed ID" pattern. This library automates the creation of immutable, comparable, and type-safe ID structs/records to prevent primitive obsession (e.g., mixing up `UserId` and `OrderId`).
+**Incremental Source Generator for Strongly Typed IDs in .NET**
 
-## Features
+This package provides the core engine for generating type-safe, immutable ID records for your domain entities.
 
-- 🚀 **Zero Runtime Overhead**: Uses Roslyn Source Generators to create code at design time.
-- 🛡️ **Type Safety**: Impossible to accidentally swap method arguments (e.g., passing a `UserId` where an `OrderId` is expected).
-- 💾 **Flexible Backing Types**: Supports `Guid` (default), `int`, and `long`.
-- 🔗 **Rich Integration**: Generated IDs implement `IComparable`, `ToString`, and type conversion operators.
-- 📦 **DDD Ready**: Perfect for Domain-Driven Design entities.
+## ✨ Features
+- 🚀 **Incremental Source Generator**: Optimized for performance with zero build-time impact.
+- 🏗️ **Clean Architecture Reference**: Use this in your **Domain** layer.
+- 🛠️ **Rich Functionality**: Generates `IComparable<T>`, `IEquatable<T>`, `TypeConverter`, and professional `XML Documentation`.
+- 🎯 **Flexible**: Support for `Guid`, `int`, and `long` backing types.
 
-## Installation
+## 🏁 Quick Start
 
-Install the package via NuGet:
+1. Install the package:
+   ```bash
+   dotnet add package EssaLab.StronglyTypedIds.Core
+   ```
 
-```bash
-dotnet add package EssaLab.StronglyTypedIds.Core
-```
+2. Define your IDs:
+   ```csharp
+   using EssaLab.StronglyTypedIds.Core;
 
-## Usage
+   [StronglyTypedId]
+   public partial record UserId;
 
-### 1. Basic Usage (Guid)
+   [StronglyTypedId(IdType.Long)]
+   public partial record OrderId;
+   ```
 
-Simply mark a `partial record` with the `[StronglyTypedId]` attribute. The default backing type is `Guid`.
+3. Enjoy type safety:
+   ```csharp
+   // This will cause a compiler error if you mix them up!
+   void Process(UserId userId, OrderId orderId) { ... }
+   ```
 
-```csharp
-using StronglyTypedIds;
-
-[StronglyTypedId]
-public partial record UserId;
-
-// Usage
-var id = UserId.New(); // Generates a new random Guid
-```
-
-### 2. Using Integers or Longs
-
-You can specify the backing type in the attribute constructor:
-
-```csharp
-using StronglyTypedIds;
-
-[StronglyTypedId(IdType.Int)]
-public partial record OrderId;
-
-[StronglyTypedId(IdType.Long)]
-public partial record ProductId;
-
-// Usage
-var orderId = new OrderId(123);
-var productId = new ProductId(999999999);
-```
-
-## Generated Code
-
-The generator automatically adds the following members to your record:
-
-- `Value` property (the underlying primitive).
-- **Constructors** for creating instances.
-- **Factory Methods**: `New()` for Guids, `Empty` for numeric types.
-- **Conversions**: Implicit conversion to the primitive type, explicit conversion from the primitive type.
-- **IComparable**: Implements `IComparable<T>` for sorting.
-- **ToString()**: Overrides `ToString()` to check the inner value.
-
-## Why Use This?
-
-Without strongly-typed IDs:
-
-```csharp
-public void ProcessOrder(Guid userId, Guid orderId) { ... }
-
-// ❌ Easy to mix up arguments!
-ProcessOrder(orderId, userId); 
-```
-
-With strongly-typed IDs:
-
-```csharp
-public void ProcessOrder(UserId userId, OrderId orderId) { ... }
-
-// ✅ Compiler error if you mix them up!
-ProcessOrder(orderId, userId); 
-```
+## 📜 Full Documentation
+For more details and integration with EF Core and JSON, visit the [Main Repository](https://github.com/EssaLab/StronglyTypedIds).

@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace EssaLab.StronglyTypedIds.Convertors.Json.Primitives;
+namespace EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Primitives;
 
 internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IReadOnlyList<T>
     where T : IEquatable<T>

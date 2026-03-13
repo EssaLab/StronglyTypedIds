@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Models;
-using EssaLab.StronglyTypedIds.Convertors.EFCore.Primitives;
+using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Primitives;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -64,13 +65,7 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
             if (!hasEf)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor(
-                        "STID003",
-                        "EF Core Missing",
-                        "Please add a reference to Microsoft.EntityFrameworkCore.",
-                        "Setup",
-                        DiagnosticSeverity.Error,
-                        true),
+                    EfConverterDiagnostics.EfCoreMissing,
                     Location.None));
                 return;
             }
@@ -186,7 +181,6 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
         sb.AppendLine("    { }");
         sb.AppendLine("}");
 
-        spc.AddSource($"{data.Key.Name}.EfConverter.g.cs", sb.ToString());
+        spc.AddSource($"{(data.Key.Namespace is null ? "" : data.Key.Namespace + ".")}{data.Key.Name}.EfConverter.g.cs", sb.ToString());
     }
 }
-

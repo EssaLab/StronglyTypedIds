@@ -1,62 +1,32 @@
 # EssaLab.StronglyTypedIds.Convertors.Json
 
-**JSON Source Generator** for `EssaLab.StronglyTypedIds`. This library automates the generation of `System.Text.Json` converters, ensuring your strongly-typed IDs are serialized as their underlying primitive values (e.g., `"d2.."` or `123`) instead of complex objects.
+**Automatic System.Text.Json Converters for Strongly Typed IDs**
 
-## Features
+This package extends `EssaLab.StronglyTypedIds` to provide seamless serialization and deserialization for your API layer using `System.Text.Json`.
 
-- ⚡ **Performance**: Generates high-performance `JsonConverter<T>` classes at compile time.
-- 🧹 **Clean API**: IDs look like standard `Guid`s or `int`s in your JSON API responses.
-- 🔌 **Auto-Registration**: Adds an extension method to register all converters in one line.
+## ✨ Features
+- 🚀 **High-Performance**: Uses `Utf8JsonReader` and `Utf8JsonWriter` directly for zero-alloc serialization.
+- 🛠️ **Seamless Integration**: Works out-of-the-box with ASP.NET Core controllers.
+- 🏗️ **Clean Architecture**: Designed for the **API / Web** layer.
 
-## Installation
+## 🏁 Quick Start
 
-Install the package via NuGet in your **Web/API** project:
+1. Install the package:
+   ```bash
+   dotnet add package EssaLab.StronglyTypedIds.Convertors.Json
+   ```
 
-```bash
-dotnet add package EssaLab.StronglyTypedIds.Convertors.Json
-```
+2. Register in `Program.cs`:
+   ```csharp
+   using EssaLab.StronglyTypedIds.Convertors.Json;
 
-> **Note**: This package currently supports `System.Text.Json`.
+   builder.Services.AddControllers()
+       .AddJsonOptions(options =>
+       {
+           // Register all converters at once
+           options.JsonSerializerOptions.AddStronglyTypedIdConverters();
+       });
+   ```
 
-## Usage
-
-### 1. Register Converters
-
-In your ASP.NET Core `Program.cs` or startup code, add the converters to the `JsonSerializerOptions`:
-
-```csharp
-using StronglyTypedIds.Json; // Generated namespace
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        // Automatically registers all strongly-typed ID converters
-        options.JsonSerializerOptions.AddStronglyTypedIdConverters();
-    });
-```
-
-### 2. JSON Output
-
-Without converters (Default behavior):
-```json
-{
-  "id": {
-    "value": "d28888e9-2ba9-473a-a40f-e38cb54f9b35"
-  },
-  "username": "alan_turing"
-}
-```
-
-With `JsonConvertors` (Desired behavior):
-```json
-{
-  "id": "d28888e9-2ba9-473a-a40f-e38cb54f9b35",
-  "username": "alan_turing"
-}
-```
-
-## How It Works
-
-The generator scans referenced assemblies for `[StronglyTypedId]` types and generates a custom `JsonConverter` that reads/writes the underlying primitive value (`Guid`, `int`, or `long`).
+## 📜 Full Documentation
+For more details, visit the [Main Repository](https://github.com/EssaLab/StronglyTypedIds).
