@@ -15,11 +15,11 @@
     <PackageId>EssaLab.StronglyTypedIds.Convertors.Json</PackageId>
     <Title>EssaLab StronglyTypedIds JSON Converters Generator</Title>
     <Description>
-      Source generator that emits System.Text.Json and Newtonsoft.Json converters
+      Source generator that emits System.Text.Json converters
       for EssaLab StronglyTypedIds, enabling seamless serialization without
       polluting the domain model.
     </Description>
-    <PackageTags>sourcegenerator;roslyn;stronglytypedid;json;systemtextjson;newtonsoft;ddd</PackageTags>
+    <PackageTags>sourcegenerator;roslyn;stronglytypedid;json;systemtextjson;ddd</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
 
     <Version>1.0.0</Version>
