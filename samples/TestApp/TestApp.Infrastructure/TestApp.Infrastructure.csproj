@@ -7,14 +7,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\..\src\EssaLab.StronglyTypedIds.Convertors.EFCore\EssaLab.StronglyTypedIds.Convertors.EFCore.csproj"
+                        OutputItemType="Analyzer"
+                        ReferenceOutputAssembly="false"  />
       <ProjectReference Include="..\TestApp.Domain\TestApp.Domain.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="EssaLab.StronglyTypedIds.Convertors.EFCore" Version="1.0.0">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      </PackageReference>
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     </ItemGroup>
 

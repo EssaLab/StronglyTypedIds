@@ -1,4 +1,4 @@
-using EssaLab.StronglyTypedIds.Convertors.Json;
+using System.Text.Json;
 using TestApp.Domain;
 var builder = WebApplication.CreateBuilder(args);
 

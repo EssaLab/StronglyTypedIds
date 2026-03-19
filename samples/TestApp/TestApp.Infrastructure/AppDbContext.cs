@@ -1,6 +1,4 @@
-﻿
-using EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TestApp.Domain;
 
 namespace TestApp.Infrastructure;

@@ -139,7 +139,7 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine("using Microsoft.EntityFrameworkCore;");
         sb.AppendLine();
-        sb.AppendLine("namespace EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;");
+        sb.AppendLine("namespace Microsoft.EntityFrameworkCore;");
         sb.AppendLine();
         sb.AppendLine("/// <summary>");
         sb.AppendLine("/// Extension methods for registering strongly-typed ID converters in EF Core.");

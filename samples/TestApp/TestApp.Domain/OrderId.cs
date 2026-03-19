@@ -1,6 +1,4 @@
-﻿// using EssaLab.StronglyTypedIds.Core;
-
-using EssaLab.StronglyTypedIds.Core;
+﻿using EssaLab.StronglyTypedIds.Core;
 
 namespace TestApp.Domain;
 

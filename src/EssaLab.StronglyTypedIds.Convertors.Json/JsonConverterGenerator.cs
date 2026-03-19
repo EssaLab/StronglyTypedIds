@@ -139,7 +139,7 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Text.Json;");
         sb.AppendLine("using System.Text.Json.Serialization;");
         sb.AppendLine();
-        sb.AppendLine("namespace EssaLab.StronglyTypedIds.Convertors.Json;");
+        sb.AppendLine("namespace System.Text.Json;");
         sb.AppendLine();
         sb.AppendLine("/// <summary>");
         sb.AppendLine("/// Extension methods for registering strongly-typed ID JSON converters.");
