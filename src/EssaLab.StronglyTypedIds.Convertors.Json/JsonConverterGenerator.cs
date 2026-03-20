@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using EssaLab.StronglyTypedIds.Convertors.Json.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Convertors.Json.Common.Models;
-using EssaLab.StronglyTypedIds.Convertors.Json.Common.Primitives;
+using EssaLab.StronglyTypedIds.Shared.Primitives;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 

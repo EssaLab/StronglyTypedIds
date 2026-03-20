@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Models;
-using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Primitives;
+using EssaLab.StronglyTypedIds.Shared.Primitives;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
