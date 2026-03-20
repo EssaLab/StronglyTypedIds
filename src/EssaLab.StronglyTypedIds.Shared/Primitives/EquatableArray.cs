@@ -3,8 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EssaLab.StronglyTypedIds.Shared.Primitives;
-
+namespace EssaLab.StronglyTypedIds.Shared;
 /// <summary>
 /// An immutable, equatable array wrapper that provides efficient equality comparison based on content.
 /// </summary>

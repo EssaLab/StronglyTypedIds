@@ -26,7 +26,7 @@ public sealed class StronglyTypedIdAttributeGenerator : IIncrementalGenerator
                #nullable enable
                using System;
 
-               namespace EssaLab.StronglyTypedIds.Core;
+               namespace EssaLab.StronglyTypedIds;
 
                /// <summary>
                /// Specifies the underlying type for the strongly-typed ID.

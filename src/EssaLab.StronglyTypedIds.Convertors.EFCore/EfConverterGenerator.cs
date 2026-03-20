@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Models;
-using EssaLab.StronglyTypedIds.Shared.Primitives;
+using EssaLab.StronglyTypedIds.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -15,13 +15,15 @@ namespace EssaLab.StronglyTypedIds.Convertors.EFCore;
 [Generator]
 public sealed class EfConverterGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = "EssaLab.StronglyTypedIds.Core.StronglyTypedIdAttribute";
-    private const string FingerprintFullName = "EssaLab.StronglyTypedIds.Core._StronglyTypedIdsBaseGenerated";
+    private const string AttributeFullName = LibConstants.AttributeName;
+    private const string FingerprintFullName = LibConstants.FingerprintName;
+    private const string EfCoreNameSpace = "Microsoft.EntityFrameworkCore";
+    private const string TargetPropertyIdentifierName = "DbSet";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var entityReferences = context.SyntaxProvider.CreateSyntaxProvider(
-            predicate: static (node, _) => node is PropertyDeclarationSyntax { Type: GenericNameSyntax { Identifier.Text: "DbSet" } },
+            predicate: static (node, _) => node is PropertyDeclarationSyntax { Type: GenericNameSyntax { Identifier.Text: TargetPropertyIdentifierName } },
             transform: static (ctx, _) =>
             {
                 var prop = (IPropertySymbol?)ctx.SemanticModel.GetDeclaredSymbol(ctx.Node);
@@ -53,7 +55,7 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
             });
 
         var hasEfCore = context.CompilationProvider.Select(static (c, _) =>
-            c.ReferencedAssemblyNames.Any(a => a.Name == "Microsoft.EntityFrameworkCore"));
+            c.ReferencedAssemblyNames.Any(a => a.Name == EfCoreNameSpace));
 
         context.RegisterSourceOutput(uniqueIds.Combine(hasEfCore), static (spc, data) =>
         {

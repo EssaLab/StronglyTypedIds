@@ -2,6 +2,7 @@
 using System.Text;
 using EssaLab.StronglyTypedIds.Core.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Core.Common.Models;
+using EssaLab.StronglyTypedIds.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,7 +15,7 @@ namespace EssaLab.StronglyTypedIds.Core.Generators;
 [Generator]
 public sealed class StronglyTypedIdGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = "EssaLab.StronglyTypedIds.Core.StronglyTypedIdAttribute";
+    private const string AttributeFullName =LibConstants.AttributeName;
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

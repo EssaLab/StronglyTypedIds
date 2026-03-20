@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using EssaLab.StronglyTypedIds.Convertors.Json.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Convertors.Json.Common.Models;
-using EssaLab.StronglyTypedIds.Shared.Primitives;
+using EssaLab.StronglyTypedIds.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -16,8 +16,8 @@ namespace EssaLab.StronglyTypedIds.Convertors.Json;
 [Generator]
 public sealed class JsonConverterGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = "EssaLab.StronglyTypedIds.Core.StronglyTypedIdAttribute";
-    private const string FingerprintFullName = "EssaLab.StronglyTypedIds.Core._StronglyTypedIdsBaseGenerated";
+    private const string AttributeFullName = LibConstants.AttributeName;
+    private const string FingerprintFullName = LibConstants.FingerprintName;
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
