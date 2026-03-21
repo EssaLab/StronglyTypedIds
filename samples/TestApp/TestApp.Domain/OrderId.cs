@@ -2,14 +2,14 @@
 
 namespace TestApp.Domain;
 
-[StronglyTypedId]
-public partial record OrderId;
+[StronglyTypedId<Guid>]
+public partial record struct OrderId;
 
-[StronglyTypedId(IdType.Long)]
-public partial record CustomerId;
+[StronglyTypedId<int>]
+public partial record struct CustomerId;
 
-// [StronglyTypedId]
-public partial record CardId;
+[StronglyTypedId<string>]
+public partial record struct CardId;
 
 // [StronglyTypedId(IdType.Long)]
 public partial record ItemId;

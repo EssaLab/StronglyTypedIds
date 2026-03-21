@@ -48,10 +48,6 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Common\" />
-  </ItemGroup>
-
  <!-- From Shared Project-->
   <ItemGroup>
     <Compile Include="..\EssaLab.StronglyTypedIds.Shared\**\*.cs"

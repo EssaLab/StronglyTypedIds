@@ -4,6 +4,7 @@ using System.Text;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Models;
 using EssaLab.StronglyTypedIds.Shared;
+using EssaLab.StronglyTypedIds.Shared.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -99,39 +100,23 @@ public sealed class EfConverterGenerator : IIncrementalGenerator
             {
                 continue;
             }
-
+            
+            //compare using  OriginalDefinition
             var attrData = propType.GetAttributes()
-                .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
-
+                .FirstOrDefault(a => a.AttributeClass is not null && 
+                                     SymbolEqualityComparer.Default.Equals(a.AttributeClass.OriginalDefinition, attr));
+            
             if (attrData is null)
                 continue;
+            
+            var backing = attrData.GetBackingType();
 
             yield return new IdEfData(
                 new IdKey(
                     propType.Name,
                     propType.ContainingNamespace.IsGlobalNamespace ? null : propType.ContainingNamespace.ToDisplayString()),
-                GetBackingTypeStatic(attrData));
+                backing);
         }
-    }
-
-    private static string GetBackingTypeStatic(AttributeData attrData)
-    {
-        if (attrData.ConstructorArguments.Length == 0)
-            return "Guid";
-
-        var val = attrData.ConstructorArguments[0].Value;
-        var i = val switch
-        {
-            int x => x,
-            _ => (int)val!
-        };
-
-        return i switch
-        {
-            1 => "int",
-            2 => "long",
-            _ => "Guid"
-        };
     }
 
     private static void GenerateExtensionClass(SourceProductionContext spc, EquatableArray<IdEfData> ids)

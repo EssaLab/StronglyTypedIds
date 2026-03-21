@@ -5,6 +5,7 @@ using System.Text;
 using EssaLab.StronglyTypedIds.Convertors.Json.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Convertors.Json.Common.Models;
 using EssaLab.StronglyTypedIds.Shared;
+using EssaLab.StronglyTypedIds.Shared.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -64,13 +65,15 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
                         .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint));
 
                     if (!hasFp) continue;
-
+                    
+                    //compare using  OriginalDefinition
                     var attrData = type.GetAttributes()
-                        .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attr));
+                        .FirstOrDefault(a => a.AttributeClass is not null && 
+                                             SymbolEqualityComparer.Default.Equals(a.AttributeClass.OriginalDefinition, attr));
 
                     if (attrData is null) continue;
 
-                    var backing = GetBackingType(attrData);
+                    var backing = attrData.GetBackingType();
 
                     result.Add(new IdJsonData(
                         type.Name,
@@ -109,26 +112,6 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
                 GenerateStandaloneConverter(spc, id);
             }
         });
-    }
-
-    private static string GetBackingType(AttributeData attrData)
-    {
-        if (attrData.ConstructorArguments.Length == 0)
-            return "Guid";
-
-        var val = attrData.ConstructorArguments[0].Value;
-        var i = val switch
-        {
-            int x => x,
-            _ => (int)val!
-        };
-
-        return i switch
-        {
-            1 => "int",
-            2 => "long",
-            _ => "Guid"
-        };
     }
 
     private static void GenerateExtensionClass(SourceProductionContext spc, EquatableArray<IdJsonData> ids)
