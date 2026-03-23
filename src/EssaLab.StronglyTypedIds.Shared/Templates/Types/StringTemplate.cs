@@ -14,7 +14,11 @@ namespace {{ns}};
 /// <summary>
 /// Represents a strongly-typed ID for <see cref="{{name}}"/>.
 /// </summary>
+#if NET7_0_OR_GREATER
+public partial record struct {{name}}(string Value) : IComparable<{{name}}>, IEquatable<{{name}}>, IParsable<{{name}}>
+#else
 public partial record struct {{name}}(string Value) : IComparable<{{name}}>, IEquatable<{{name}}>
+#endif
 {
     public static {{name}} Empty => new(string.Empty);
 
@@ -25,6 +29,26 @@ public partial record struct {{name}}(string Value) : IComparable<{{name}}>, IEq
 
     public static implicit operator string({{name}} id) => id.Value;
     public static explicit operator {{name}}(string value) => new(value);
+
+#if NET7_0_OR_GREATER    
+    public static {{name}} Parse(string s, IFormatProvider? provider) => new(s);
+    public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? s, IFormatProvider? provider, [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out {{name}} result)
+#else
+    public static {{name}} Parse(string s, IFormatProvider? provider) => new(s);
+    public static bool TryParse(string? s, IFormatProvider? provider, out {{name}} result)
+#endif
+    {
+        if (s is null)
+        {
+            result = default;
+            return false;
+        }
+        result = new(s);
+        return true;
+    }
+
+    public static {{name}} Parse(string s) => Parse(s, null);
+    public static bool TryParse(string? s, out {{name}} result) => TryParse(s, null, out result);
 }
 """;
 

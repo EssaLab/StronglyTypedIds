@@ -14,7 +14,11 @@ namespace {{ns}};
 /// <summary>
 /// Represents a strongly-typed ID for <see cref="{{name}}"/>.
 /// </summary>
+#if NET7_0_OR_GREATER
+public partial record struct {{name}}(decimal Value) : IComparable<{{name}}>, IEquatable<{{name}}>, IParsable<{{name}}>
+#else
 public partial record struct {{name}}(decimal Value) : IComparable<{{name}}>, IEquatable<{{name}}>
+#endif
 {
     public static {{name}} Empty => new(0m);
 
@@ -25,6 +29,30 @@ public partial record struct {{name}}(decimal Value) : IComparable<{{name}}>, IE
 
     public static implicit operator decimal({{name}} id) => id.Value;
     public static explicit operator {{name}}(decimal value) => new(value);
+
+#if NET7_0_OR_GREATER    
+    public static {{name}} Parse(string s, IFormatProvider? provider) => new(decimal.Parse(s, provider));
+    public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? s, IFormatProvider? provider, [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out {{name}} result)
+#else
+    public static {{name}} Parse(string s, IFormatProvider? provider) => new(decimal.Parse(s));
+    public static bool TryParse(string? s, IFormatProvider? provider, out {{name}} result)
+#endif
+    {
+#if NET7_0_OR_GREATER
+        if (decimal.TryParse(s, provider, out var parsedValue))
+#else
+        if (decimal.TryParse(s, out var parsedValue))
+#endif
+        {
+            result = new(parsedValue);
+            return true;
+        }
+        result = default;
+        return false;
+    }
+
+    public static {{name}} Parse(string s) => Parse(s, null);
+    public static bool TryParse(string? s, out {{name}} result) => TryParse(s, null, out result);
 }
 """;
 

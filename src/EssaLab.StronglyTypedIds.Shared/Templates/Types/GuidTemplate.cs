@@ -14,7 +14,11 @@ namespace {{ns}};
 /// <summary>
 /// Represents a strongly-typed ID for <see cref="{{name}}"/>.
 /// </summary>
+#if NET7_0_OR_GREATER
+public partial record struct {{name}}(Guid Value) : IComparable<{{name}}>, IEquatable<{{name}}>, IParsable<{{name}}>
+#else
 public partial record struct {{name}}(Guid Value) : IComparable<{{name}}>, IEquatable<{{name}}>
+#endif
 {
     public static {{name}} Empty => new(Guid.Empty);
     public static {{name}} New() => new(Guid.NewGuid());
@@ -26,6 +30,26 @@ public partial record struct {{name}}(Guid Value) : IComparable<{{name}}>, IEqua
 
     public static implicit operator Guid({{name}} id) => id.Value;
     public static explicit operator {{name}}(Guid value) => new(value);
+
+#if NET7_0_OR_GREATER    
+    public static {{name}} Parse(string s, IFormatProvider? provider) => new(Guid.Parse(s, provider));
+    public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? s, IFormatProvider? provider, [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out {{name}} result)
+#else
+    public static {{name}} Parse(string s, IFormatProvider? provider) => new(Guid.Parse(s));
+    public static bool TryParse(string? s, IFormatProvider? provider, out {{name}} result)
+#endif
+    {
+        if (Guid.TryParse(s, out var parsedValue))
+        {
+            result = new(parsedValue);
+            return true;
+        }
+        result = default;
+        return false;
+    }
+
+    public static {{name}} Parse(string s) => Parse(s, null);
+    public static bool TryParse(string? s, out {{name}} result) => TryParse(s, null, out result);
 }
 """;
 

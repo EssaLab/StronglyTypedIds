@@ -21,4 +21,9 @@ app.MapGet("/", () =>
   });
 });
 
+app.MapGet("/customers/{customerId:int}", (CustomerId customerId) =>
+{
+   return Results.Ok(customerId);
+});
+
 app.Run();
