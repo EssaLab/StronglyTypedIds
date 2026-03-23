@@ -15,4 +15,5 @@ public record struct IdRecordData(
     string? Namespace,
     string BackingType,
     bool HasIssue = false,
+    bool IsValueType = false,
     Microsoft.CodeAnalysis.Location? Location = null) : IEquatable<IdRecordData>;

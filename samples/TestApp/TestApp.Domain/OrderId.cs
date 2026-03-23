@@ -3,7 +3,7 @@
 namespace TestApp.Domain;
 
 [StronglyTypedId<Guid>]
-public partial record struct OrderId;
+public partial record   OrderId;
 
 [StronglyTypedId<int>]
 public partial record struct CustomerId;
