@@ -64,26 +64,7 @@ public sealed class StronglyTypedIdGenerator : IIncrementalGenerator
             spc.AddSource($"{(data.Namespace is null ? "" : data.Namespace + ".")}{data.Name}.StronglyTypedId.g.cs", source!);
         });
     }
-
-    // private static string GetBackingType(AttributeData attrData)
-    // {
-    //     if (attrData.ConstructorArguments.Length == 0)
-    //         return "Guid";
-    //
-    //     var val = attrData.ConstructorArguments[0].Value;
-    //     var i = val switch
-    //     {
-    //         int x => x,
-    //         _ => (int)val!
-    //     };
-    //
-    //     return i switch
-    //     {
-    //         1 => "int",
-    //         2 => "long",
-    //         _ => "Guid"
-    //     };
-    // }
+    
 
     private static void AddStronglyTypedId2(StringBuilder sb, IdRecordData data)
     {
@@ -168,34 +149,4 @@ public sealed class StronglyTypedIdGenerator : IIncrementalGenerator
         sb.AppendLine($"    public static explicit operator {name}({type} value) => new(value);");
         sb.AppendLine("}");
     }
-
-    // private static void AddStronglyTypedId(StringBuilder sb, IdRecordData data)
-    // {
-    //     var name = data.Name;
-    //     var type = data.BackingType;
-    //
-    //     var emptyValue = type switch
-    //     {
-    //         "Guid"   => "Guid.Empty",
-    //         "string" => "string.Empty",
-    //         "int"    => "0",
-    //         "long"   => "0L",
-    //         _        => "default!" 
-    //     };
-    //     
-    //     var specificMethods = type == "Guid" 
-    //         ? TemplatesRepository.GuidMethods.Replace("{Name}", name) 
-    //         : string.Empty;
-    //     
-    //     // header
-    //     sb.Append(TemplatesRepository.Header.Replace("{Namespace}", data.Namespace ?? "Global"));
-    //     // body
-    //     var body = TemplatesRepository.RecordBody
-    //         .Replace("{Name}", name)
-    //         .Replace("{BackingType}", type)
-    //         .Replace("{EmptyValue}", emptyValue)
-    //         .Replace("{SpecificMethods}", specificMethods);
-    //     sb.AppendLine(body);
-    //
-    // }
 }

@@ -11,8 +11,8 @@ public partial record struct CustomerId;
 [StronglyTypedId<string>]
 public partial record struct CardId;
 
-// [StronglyTypedId(IdType.Long)]
-public partial record ItemId;
+[StronglyTypedId<string>]
+public partial record struct ItemId;
 
-// [StronglyTypedId(IdType.Long)]
-public partial record MohammedId();
+// [StronglyTypedId<int>]
+public partial record struct MohammedId;

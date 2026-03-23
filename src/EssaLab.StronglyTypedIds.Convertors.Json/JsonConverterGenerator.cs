@@ -17,77 +17,27 @@ namespace EssaLab.StronglyTypedIds.Convertors.Json;
 [Generator]
 public sealed class JsonConverterGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = LibConstants.AttributeName;
-    private const string FingerprintFullName = LibConstants.FingerprintName;
+    private const string SystemTextJsonTargetNamespace = "System.Text.Json";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var typeReferences = context.SyntaxProvider
-            .CreateSyntaxProvider(
-                static (node, _) => node is TypeSyntax,
-                static (ctx, _) =>
-                {
-                    var symbol = ctx.SemanticModel.GetSymbolInfo(ctx.Node).Symbol as INamedTypeSymbol;
-                    if (symbol is null) return default;
-
-                    return new TypeReference(
-                        symbol.Name,
-                        symbol.ContainingNamespace.IsGlobalNamespace ? null : symbol.ContainingNamespace.ToDisplayString());
-                })
-            .Where(static r => r.Name is not null);
-
-        var idTypes = typeReferences.Collect().Combine(context.CompilationProvider)
-            .Select(static (data, _) =>
+        var idsFromCompilation = context.CompilationProvider
+            .Select(static (compilation, _) =>
             {
-                var (references, compilation) = data;
-
-                var attr = compilation.GetTypeByMetadataName(AttributeFullName);
-                var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
-
-                if (attr is null || fingerprint is null)
-                    return EquatableArray<IdJsonData>.Empty;
-
-                var result = new List<IdJsonData>();
-                var processed = new HashSet<TypeReference>();
-
-                foreach (var reference in references)
-                {
-                    if (!processed.Add(reference)) continue;
-
-                    var fullName = reference.Namespace is null ? reference.Name : $"{reference.Namespace}.{reference.Name}";
-                    var type = compilation.GetTypeByMetadataName(fullName);
-                    if (type is null) continue;
-
-                    if (type.ContainingAssembly is not IAssemblySymbol asm)
-                        continue;
-
-                    var hasFp = asm.GetAttributes()
-                        .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint));
-
-                    if (!hasFp) continue;
+                var extracted = IdExtractor.ExtractIdsFromCompilation(compilation);
+                
+                var distinct = extracted
+                    .Select(d => new IdJsonData(d.Name, d.Namespace, d.BackingType))
+                    .Distinct()
+                    .ToArray();
                     
-                    //compare using  OriginalDefinition
-                    var attrData = type.GetAttributes()
-                        .FirstOrDefault(a => a.AttributeClass is not null && 
-                                             SymbolEqualityComparer.Default.Equals(a.AttributeClass.OriginalDefinition, attr));
-
-                    if (attrData is null) continue;
-
-                    var backing = attrData.GetBackingType();
-
-                    result.Add(new IdJsonData(
-                        type.Name,
-                        type.ContainingNamespace.IsGlobalNamespace ? null : type.ContainingNamespace.ToDisplayString(),
-                        backing));
-                }
-
-                return new EquatableArray<IdJsonData>(result.ToArray());
+                return new EquatableArray<IdJsonData>(distinct);
             });
 
         var hasJsonLibrary = context.CompilationProvider.Select(static (c, _) =>
-            c.ReferencedAssemblyNames.Any(a => a.Name == "System.Text.Json"));
+            c.ReferencedAssemblyNames.Any(a => a.Name == SystemTextJsonTargetNamespace));
 
-        var pipeline = idTypes.Combine(hasJsonLibrary);
+        var pipeline = idsFromCompilation.Combine(hasJsonLibrary);
 
         context.RegisterSourceOutput(pipeline, static (spc, data) =>
         {
@@ -186,5 +136,3 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
         spc.AddSource($"{(data.Namespace is null ? "" : data.Namespace + ".")}{data.Name}.JsonConverter.g.cs", sb.ToString());
     }
 }
-
-internal record struct IdJsonData(string Name, string? Namespace, string BackingType) : IEquatable<IdJsonData>;

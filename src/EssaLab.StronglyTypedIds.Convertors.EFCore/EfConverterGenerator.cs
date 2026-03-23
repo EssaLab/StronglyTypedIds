@@ -6,8 +6,6 @@ using EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Models;
 using EssaLab.StronglyTypedIds.Shared;
 using EssaLab.StronglyTypedIds.Shared.Helpers;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace EssaLab.StronglyTypedIds.Convertors.EFCore;
 
 /// <summary>
@@ -16,108 +14,49 @@ namespace EssaLab.StronglyTypedIds.Convertors.EFCore;
 [Generator]
 public sealed class EfConverterGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = LibConstants.AttributeName;
-    private const string FingerprintFullName = LibConstants.FingerprintName;
     private const string EfCoreNameSpace = "Microsoft.EntityFrameworkCore";
-    private const string TargetPropertyIdentifierName = "DbSet";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var entityReferences = context.SyntaxProvider.CreateSyntaxProvider(
-            predicate: static (node, _) => node is PropertyDeclarationSyntax { Type: GenericNameSyntax { Identifier.Text: TargetPropertyIdentifierName } },
-            transform: static (ctx, _) =>
+        var hasEfCore = context.CompilationProvider.Select(static (compilation, _) => 
+            compilation.ReferencedAssemblyNames.Any(a => a.Name == EfCoreNameSpace)
+        );
+
+        var idsFromCompilation = context.CompilationProvider
+            .Select(static (compilation, _) =>
             {
-                var prop = (IPropertySymbol?)ctx.SemanticModel.GetDeclaredSymbol(ctx.Node);
-                var entityType = (prop?.Type as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
-                if (entityType is null) return default;
-
-                return new EntityReference(
-                    entityType.Name,
-                    entityType.ContainingNamespace.IsGlobalNamespace ? null : entityType.ContainingNamespace.ToDisplayString());
-            })
-            .Where(static r => r.Name is not null);
-
-        var idsFromEntities = entityReferences.Combine(context.CompilationProvider)
-            .SelectMany(static (data, _) =>
-            {
-                var (reference, compilation) = data;
-                var fullName = reference.Namespace is null ? reference.Name : $"{reference.Namespace}.{reference.Name}";
-                var entityType = compilation.GetTypeByMetadataName(fullName);
-                if (entityType is null) return Enumerable.Empty<IdEfData>();
-
-                return ExtractIds(entityType, compilation);
+                var extracted = IdExtractor.ExtractIdsFromCompilation(compilation);
+                
+                var distinct = extracted
+                    .Select(d => new IdEfData(new IdKey(d.Name, d.Namespace), d.BackingType))
+                    .Distinct()
+                    .ToArray();
+                    
+                return new EquatableArray<IdEfData>(distinct);
             });
 
-        var uniqueIds = idsFromEntities.Collect()
-            .Select(static (all, _) =>
-            {
-                var unique = all.GroupBy(x => x.Key).Select(g => g.First()).ToArray();
-                return new EquatableArray<IdEfData>(unique);
-            });
-
-        var hasEfCore = context.CompilationProvider.Select(static (c, _) =>
-            c.ReferencedAssemblyNames.Any(a => a.Name == EfCoreNameSpace));
-
-        context.RegisterSourceOutput(uniqueIds.Combine(hasEfCore), static (spc, data) =>
-        {
-            var (ids, hasEf) = data;
-
-            if (ids.Count == 0)
-                return;
-
-            if (!hasEf)
-            {
-                spc.ReportDiagnostic(Diagnostic.Create(
-                    EfConverterDiagnostics.EfCoreMissing,
-                    Location.None));
-                return;
-            }
-
-            GenerateExtensionClass(spc, ids);
-            foreach (var id in ids)
-            {
-                GenerateStandaloneConverter(spc, id);
-            }
-        });
-    }
-
-    private static IEnumerable<IdEfData> ExtractIds(ITypeSymbol entity, Compilation compilation)
+        // 5. مرحلة التوليد (Generation)
+        context.RegisterSourceOutput(idsFromCompilation.Combine(hasEfCore), static (spc, data) =>
     {
-        var attr = compilation.GetTypeByMetadataName(AttributeFullName);
-        var fingerprint = compilation.GetTypeByMetadataName(FingerprintFullName);
+        var (ids, hasEf) = data;
 
-        if (attr is null || fingerprint is null)
-            yield break;
+        if (ids.Count == 0) return;
 
-        foreach (var prop in entity.GetMembers().OfType<IPropertySymbol>())
+        if (!hasEf)
         {
-            if (prop.Type is not INamedTypeSymbol propType)
-                continue;
-
-            // Verify if the assembly of the type has the fingerprint
-            if (propType.ContainingAssembly is not IAssemblySymbol asm || 
-                !asm.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, fingerprint)))
-            {
-                continue;
-            }
-            
-            //compare using  OriginalDefinition
-            var attrData = propType.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass is not null && 
-                                     SymbolEqualityComparer.Default.Equals(a.AttributeClass.OriginalDefinition, attr));
-            
-            if (attrData is null)
-                continue;
-            
-            var backing = attrData.GetBackingType();
-
-            yield return new IdEfData(
-                new IdKey(
-                    propType.Name,
-                    propType.ContainingNamespace.IsGlobalNamespace ? null : propType.ContainingNamespace.ToDisplayString()),
-                backing);
+            spc.ReportDiagnostic(Diagnostic.Create(EfConverterDiagnostics.EfCoreMissing, Location.None));
+            return;
         }
-    }
+
+        GenerateExtensionClass(spc, ids);
+        foreach (var id in ids)
+        {
+            GenerateStandaloneConverter(spc, id);
+        }
+    });
+}
+
+    
 
     private static void GenerateExtensionClass(SourceProductionContext spc, EquatableArray<IdEfData> ids)
     {
