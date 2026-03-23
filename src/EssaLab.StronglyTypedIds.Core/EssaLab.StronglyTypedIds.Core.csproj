@@ -15,16 +15,15 @@
     <PackageId>EssaLab.StronglyTypedIds.Core</PackageId>
     <Title>EssaLab StronglyTypedIds Source Generator</Title>
     <Description>
-      Core source generator that creates strongly-typed IDs (Guid, int, long) for DDD-style domain models.
-      Generates immutable, comparable, and type-safe ID types without polluting the domain.
+      High-performance, memory-efficient core source generator for creating Strongly Typed IDs (Guid, int, long, string, decimal). Eliminates primitive obsession by enforcing type-safe, immutable IDs with out-of-the-box ASP.NET Core IParsable Minimal API binding support natively constructed strictly within the domain assembly constraints.
     </Description>
-    <PackageTags>sourcegenerator;roslyn;stronglytypedid;ddd;guid;identity</PackageTags>
+    <PackageTags>sourcegenerator;roslyn;stronglytypedid;ddd;guid;identity;iparsable;aspnetcore</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
 
-    <Version>1.0.0</Version>
-    <PackageVersion>1.0.0</PackageVersion>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>2.0.0</Version>
+    <PackageVersion>2.0.0</PackageVersion>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
 
     <Authors>Redaessa7</Authors>
     <Company>EssaLab</Company>
