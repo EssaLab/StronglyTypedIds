@@ -1,34 +1,21 @@
 # EssaLab.StronglyTypedIds.Convertors.EFCore
 
-**Automatic EF Core Value Converters for Strongly Typed IDs**
+The Entity Framework Core specific source generator responsible for translating mapped Domain Identifiers into relational database primitives seamlessly.
 
-This package extends `EssaLab.StronglyTypedIds` to provide seamless integration with Entity Framework Core through automatic `ValueConverter` generation.
+### Responsibilities
+When integrated into your **Infrastructure** or **Persistence** tier, this satellite generator synchronizes with the foundational Core generator to eliminate boilerplate Entity Framework configurations:
 
-## ✨ Features
-- ⚡ **Auto-Discovery**: Automatically finds and configures converters for all your strongly typed IDs used in your entities.
-- 🛠️ **Convention-Based**: One-line registration in your `DbContext`.
-- 🏗️ **Clean Architecture**: Designed for the **Infrastructure** layer.
+* **Global Compilation Discovery:** Relies on the standard `IdExtractor` from the Centralized Template Registry. Rather than analyzing `DbContext` classes or parsing individual `DbSet<T>` properties (which incurs massive performance degradation on large schemas), this generator inspects the linked Domain assembly directly for the metadata fingerprint. It efficiently identifies every `[StronglyTypedId]` declaration natively in milliseconds.
+* **Deterministic Native Value Conversions:** Generates dedicated `ValueConverter<TId, TBacking>` implementations natively mapped to the underlying data store for each corresponding ID type (e.g. `Guid`, `int`, `long`, `string`, `decimal`).
+* **Centralized Configuration Interface:** Emits the globally accessible extension method `AddStronglyTypedIdConventions(this ModelConfigurationBuilder)`. This method establishes a global type translation convention across the complete DbContext boundary safely.
 
-## 🏁 Quick Start
+### Best Practices
+Install this NuGet package inside the project library maintaining your Entity Framework `DbContext` layer (e.g. `YourApplication.Infrastructure`). Include standard model configuration conventions as follows:
 
-1. Install the package:
-   ```bash
-   dotnet add package EssaLab.StronglyTypedIds.Convertors.EFCore
-   ```
-
-2. Register in your `DbContext`:
-   ```csharp
-   using EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;
-
-   public class AppDbContext : DbContext
-   {
-       protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-       {
-           // This one line handles everything!
-           configurationBuilder.AddStronglyTypedIdConventions();
-       }
-   }
-   ```
-
-## 📜 Full Documentation
-For more details, visit the [Main Repository](https://github.com/EssaLab/StronglyTypedIds).
+```csharp
+protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+{
+    // Automatically aligns all Strongly Typed IDs with their respective DB primitives.
+    configurationBuilder.AddStronglyTypedIdConventions();
+}
+```

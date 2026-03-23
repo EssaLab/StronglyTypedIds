@@ -1,38 +1,14 @@
 # EssaLab.StronglyTypedIds.Core
 
-**Incremental Source Generator for Strongly Typed IDs in .NET**
+The foundational compilation tool behind the EssaLab Strongly Typed IDs framework, focusing exclusively on domain-level identifier generation.
 
-This package provides the core engine for generating type-safe, immutable ID records for your domain entities.
+### Responsibilities
+`EssaLab.StronglyTypedIds.Core` acts as the source generation baseline for producing performant, unencumbered Domain Identifiers. It holds the following technical objectives:
 
-## ✨ Features
-- 🚀 **Incremental Source Generator**: Optimized for performance with zero build-time impact.
-- 🏗️ **Clean Architecture Reference**: Use this in your **Domain** layer.
-- 🛠️ **Rich Functionality**: Generates `IComparable<T>`, `IEquatable<T>`, `TypeConverter`, and professional `XML Documentation`.
-- 🎯 **Flexible**: Support for `Guid`, `int`, and `long` backing types.
+* **Emitting Structural Artifacts:** Generates the `[StronglyTypedId]` marker attribute explicitly within the scope of the consuming assembly. This avoids distributing an external runtime DLL dependency just for markers.
+* **Assembly Metadata Discovery (AMD):** Automatically flags the compiling assembly with `EssaLab.StronglyTypedIds.Fingerprint._StronglyTypedIdsBaseGenerated`. This metadata fingerprint plays a crucial role for advanced tooling; it permits satellite converters (such as `EssaLab.StronglyTypedIds.Convertors.EFCore`) to locate Domain Assemblies in micro-seconds, guaranteeing O(1) discovery performance and safely bypassing recursive AST node traversal operations entirely.
+* **Primitive and Complex Operators:** Emits concrete `record struct` identifiers backed optionally by `Guid`, `int`, `long`, `string`, or `decimal`. Resolves `IComparable`, `IEquatable`, and mathematical equality implementations cleanly into source.
+* **Universal Parameter Binding Engine:** Generates multiple universal `TryParse` definitions across compatibility boundaries. When installed on contemporary frameworks (`.NET 7+`), it synthesizes standard `IParsable<T>` representations out of the box. This provides pristine routing bindings allowing parameters to automatically map from URLs directly into Strongly Typed IDs across Minimal API and ASP.NET Core MVC controllers with zero configuration.
 
-## 🏁 Quick Start
-
-1. Install the package:
-   ```bash
-   dotnet add package EssaLab.StronglyTypedIds.Core
-   ```
-
-2. Define your IDs:
-   ```csharp
-   using EssaLab.StronglyTypedIds.Core;
-
-   [StronglyTypedId]
-   public partial record UserId;
-
-   [StronglyTypedId(IdType.Long)]
-   public partial record OrderId;
-   ```
-
-3. Enjoy type safety:
-   ```csharp
-   // This will cause a compiler error if you mix them up!
-   void Process(UserId userId, OrderId orderId) { ... }
-   ```
-
-## 📜 Full Documentation
-For more details and integration with EF Core and JSON, visit the [Main Repository](https://github.com/EssaLab/StronglyTypedIds).
+### Best Practices
+Install this minimal dependency within your foundational mapping layers, such as `YourApplication.Domain`. Types defined internally will gracefully scale out through auxiliary compilation references down the pipeline.
