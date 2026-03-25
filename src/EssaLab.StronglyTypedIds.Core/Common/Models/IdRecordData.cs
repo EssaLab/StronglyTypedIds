@@ -12,6 +12,7 @@ namespace EssaLab.StronglyTypedIds.Core.Common.Models;
 /// <param name="Location">The location of the issue for reporting.</param>
 public record struct IdRecordData(
     string Name,
+    string FullName,
     string? Namespace,
     string BackingType,
     bool HasIssue = false,

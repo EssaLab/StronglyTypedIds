@@ -30,12 +30,14 @@ public sealed class StronglyTypedIdGenerator : IIncrementalGenerator
                     var symbol = (INamedTypeSymbol)ctx.TargetSymbol;
                     var typeSyntax = (TypeDeclarationSyntax)ctx.TargetNode;
 
+                    var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
                     var hasPartial = typeSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
                     var isValueType = typeSyntax is RecordDeclarationSyntax record && 
                                       record.ClassOrStructKeyword.IsKind(SyntaxKind.StructKeyword);
 
                     return new IdRecordData(
                         symbol.Name,
+                        fullName,
                         symbol.ContainingNamespace.IsGlobalNamespace ? null : symbol.ContainingNamespace.ToDisplayString(),
                         ctx.Attributes[0].GetBackingType(),
                         !hasPartial,
@@ -65,7 +67,8 @@ public sealed class StronglyTypedIdGenerator : IIncrementalGenerator
                 return;
             }
             var source = template.GenerateCoreCode(data.Name,data.Namespace ?? "Global", data.IsValueType);
-            spc.AddSource($"{(data.Namespace is null ? "" : data.Namespace + ".")}{data.Name}.StronglyTypedId.g.cs", source);
+            var hintName = $"{data.FullName.Replace(".", "_")}.StronglyTypedId.g.cs"; 
+            spc.AddSource(hintName, source);
         });
     }
 }

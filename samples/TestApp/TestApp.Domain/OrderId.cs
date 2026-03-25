@@ -1,18 +1,27 @@
 ﻿using EssaLab.StronglyTypedIds;
 
-namespace TestApp.Domain;
+namespace TestApp.Models
+{
+    [StronglyTypedId<Guid>]
+    public partial record OrderId;
 
-[StronglyTypedId<Guid>]
-public partial record   OrderId;
+};
 
-[StronglyTypedId<int>]
-public partial record struct CustomerId;
+namespace TestApp.Domain
+{
 
-[StronglyTypedId<string>]
-public partial record struct CardId;
+    [StronglyTypedId<Guid>]
+    public partial record OrderId;
 
-[StronglyTypedId<string>]
-public partial record struct ItemId;
+    [StronglyTypedId<int>]
+    public partial record struct CustomerId;
+
+    [StronglyTypedId<string>]
+    public partial record struct CardId;
+
+    [StronglyTypedId<string>]
+    public partial record struct ItemId;
 
 // [StronglyTypedId<int>]
-public partial record struct MohammedId;
+    public partial record struct MohammedId;
+}
