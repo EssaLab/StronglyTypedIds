@@ -21,51 +21,85 @@ public sealed class StronglyTypedIdGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var ids = context.SyntaxProvider
+        var combinedData = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 AttributeFullName,
-                predicate: static (node, _) => node is RecordDeclarationSyntax , // or StructDeclarationSyntax
+                predicate: static (node, _) => node is  TypeDeclarationSyntax , //RecordDeclarationSyntax , // or StructDeclarationSyntax
                 transform: static (ctx, _) =>
                 {
                     var symbol = (INamedTypeSymbol)ctx.TargetSymbol;
                     var typeSyntax = (TypeDeclarationSyntax)ctx.TargetNode;
 
+                    var isRecord = typeSyntax is RecordDeclarationSyntax;
                     var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
                     var hasPartial = typeSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+                    var backingType = ctx.Attributes[0].GetBackingType();
                     var isValueType = typeSyntax is RecordDeclarationSyntax record && 
                                       record.ClassOrStructKeyword.IsKind(SyntaxKind.StructKeyword);
 
-                    return new IdRecordData(
+                    var gen = new IdGenerationData(
                         symbol.Name,
                         fullName,
                         symbol.ContainingNamespace.IsGlobalNamespace ? null : symbol.ContainingNamespace.ToDisplayString(),
-                        ctx.Attributes[0].GetBackingType(),
-                        !hasPartial,
-                        isValueType,
+                        backingType,
+                        isValueType);
+
+                    var diag = new IdDiagnosticData(
+                        MissingPartial:!hasPartial,
+                        IsUnsupportedType: !TemplateProvider.HasTemplateForType(backingType),
+                        NotARecord: !isRecord,
+                        symbol.Name,
+                        backingType,
                         typeSyntax.Identifier.GetLocation()
                     );
+                    
+                    return new IdCombinedData(gen, diag);
                 });
         
-        context.RegisterSourceOutput(ids, static (spc, data) =>
+        // diagnostic branch
+        context.RegisterSourceOutput(combinedData, static (spc, source) =>
         {
-            if (data.HasIssue)
+            if (source.Diagnostic.MissingPartial)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     StronglyTypedIdDiagnostics.MissingPartialKeyword,
-                    data.Location,
-                    data.Name));
+                    source.Diagnostic.Location,
+                    source.Diagnostic.Name));
                 return;
             }
-
-            var template = TemplateProvider.GetTemplate(data.BackingType);
-            if (template is null)
+            
+            if (source.Diagnostic.IsUnsupportedType)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     StronglyTypedIdDiagnostics.UnsupportedBackingType,
-                    data.Location,
-                    data.BackingType));
+                    source.Diagnostic.Location,
+                    source.Diagnostic.BackingType));
                 return;
             }
+
+            if (source.Diagnostic.NotARecord)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    StronglyTypedIdDiagnostics.MustBeRecord,
+                    source.Diagnostic.Location,
+                    source.Diagnostic.Name));
+                return;
+            }
+            
+        });
+        
+        // generator branch
+        var generationPipeline = combinedData
+            .Where(static x => x.Diagnostic is { NotARecord: false, IsUnsupportedType: false })
+            .Select(static (x, _) => x.Generation)
+            .Collect()
+            .SelectMany(static (items,_) => items.Distinct());
+        
+        context.RegisterSourceOutput(generationPipeline, static (spc, data) =>
+        {
+            var template = TemplateProvider.GetTemplate(data.BackingType);
+            if (template is null) return;
+            
             var source = template.GenerateCoreCode(data.Name,data.Namespace ?? "Global", data.IsValueType);
             var hintName = $"{data.FullName.Replace(".", "_")}.StronglyTypedId.g.cs"; 
             spc.AddSource(hintName, source);

@@ -20,4 +20,12 @@ internal static class StronglyTypedIdDiagnostics
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+    
+    public static readonly DiagnosticDescriptor MustBeRecord = new(
+        id: "STID003",
+        title: "Type must be a record",
+        messageFormat: "The type '{0}' must be declared as a 'record' or 'record struct' to use [StronglyTypedId]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

@@ -9,12 +9,8 @@ internal static class BackingTypeHelper
         if (attrData.AttributeClass is { IsGenericType: true, TypeArguments.Length: > 0 })
         {
             var typeSymbol = attrData.AttributeClass.TypeArguments[0];
-        
-            // دي أهم حتة: بتجبره يرجع الكلمات المحجوزة (int, string, Guid) 
-            // بدلاً من الأسماء الطويلة (System.Int32)
-            return typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            return typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat).ToUpper();
         }
-    
-        return "Guid"; // Default
+        return "GUID"; // Default
     }
 }

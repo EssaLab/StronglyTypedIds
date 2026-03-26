@@ -71,6 +71,17 @@ public static class IdExtractor
     
     private static void ExtractIdsFromType(INamedTypeSymbol type, List<IdData> ids)
     {
+
+        // enforce type must be record and support Consistency with core generation
+        if (!type.IsRecord)
+        {
+            foreach (var nestedType in type.GetTypeMembers())
+            {
+                ExtractIdsFromType(nestedType, ids);
+            }
+            return;
+        }
+        
         var attrData = type.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == AttributeName);
             
