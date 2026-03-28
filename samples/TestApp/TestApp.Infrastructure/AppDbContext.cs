@@ -12,7 +12,7 @@ public class AppDbContext : DbContext
         base.ConfigureConventions(configurationBuilder);
         configurationBuilder.AddStronglyTypedIdConventions();
     }
-
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

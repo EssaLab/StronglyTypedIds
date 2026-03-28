@@ -22,6 +22,6 @@ namespace TestApp.Domain
     [StronglyTypedId<string>]
     public partial record struct ItemId;
 
-// [StronglyTypedId<int>]
+[StronglyTypedId<int>]
     public partial record struct MohammedId;
 }

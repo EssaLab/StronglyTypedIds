@@ -25,7 +25,7 @@ public sealed class JsonConverterGenerator : IIncrementalGenerator
         var idsFromCompilation = context.CompilationProvider
             .Select(static (compilation, _) =>
             {
-                var extracted = IdExtractor.ExtractIdsFromCompilation(compilation);
+                var extracted = IdScannerHelper.Scan(compilation);
                 
                 var distinct = extracted
                     .Select(d => new IdJsonData(d.Name, d.Namespace, d.BackingType))

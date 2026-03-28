@@ -137,7 +137,7 @@ public sealed class DecimalTemplate : ITypeTemplate
                                                                 /// <summary>
                                                                 /// EF Core ValueConverter for <see cref="{{name}}"/>.
                                                                 /// </summary>
-                                                                internal sealed class {{name}}EfConverter : ValueConverter<{{name}}, decimal>
+                                                                public sealed class {{name}}EfConverter : ValueConverter<{{name}}, decimal>
                                                                 {
                                                                     public {{name}}EfConverter() : base(
                                                                         static id => id.Value,
@@ -158,7 +158,7 @@ public sealed class DecimalTemplate : ITypeTemplate
                                                                 /// <summary>
                                                                 /// JSON converter for <see cref="{{name}}"/>.
                                                                 /// </summary>
-                                                                internal sealed class {{name}}JsonConverter : JsonConverter<{{name}}>
+                                                                public sealed class {{name}}JsonConverter : JsonConverter<{{name}}>
                                                                 {
                                                                     public override {{name}} Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
                                                                     {
