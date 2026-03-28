@@ -1,10 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
-namespace EssaLab.StronglyTypedIds.Convertors.EFCore.Common.Primitives;
-
-internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IReadOnlyList<T>
+namespace EssaLab.StronglyTypedIds.Shared;
+/// <summary>
+/// An immutable, equatable array wrapper that provides efficient equality comparison based on content.
+/// </summary>
+/// <typeparam name="T">The type of elements in the array.</typeparam>
+public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IReadOnlyList<T>
     where T : IEquatable<T>
 {
     private readonly T[]? _array;
@@ -57,6 +61,8 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IRea
 
     public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right) => left.Equals(right);
     public static bool operator !=(EquatableArray<T> left, EquatableArray<T> right) => !left.Equals(right);
+
+    public static implicit operator EquatableArray<T>(T[]? array) => new EquatableArray<T>(array);
 
     public Enumerator GetEnumerator() => new Enumerator(_array ?? Array.Empty<T>());
 

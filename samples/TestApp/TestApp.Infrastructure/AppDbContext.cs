@@ -1,6 +1,4 @@
-﻿
-using EssaLab.StronglyTypedIds.Convertors.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TestApp.Domain;
 
 namespace TestApp.Infrastructure;
@@ -14,7 +12,7 @@ public class AppDbContext : DbContext
         base.ConfigureConventions(configurationBuilder);
         configurationBuilder.AddStronglyTypedIdConventions();
     }
-
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

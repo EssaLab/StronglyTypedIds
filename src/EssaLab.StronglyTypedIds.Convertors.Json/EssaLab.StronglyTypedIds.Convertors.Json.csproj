@@ -15,17 +15,15 @@
     <PackageId>EssaLab.StronglyTypedIds.Convertors.Json</PackageId>
     <Title>EssaLab StronglyTypedIds JSON Converters Generator</Title>
     <Description>
-      Source generator that emits System.Text.Json converters
-      for EssaLab StronglyTypedIds, enabling seamless serialization without
-      polluting the domain model.
+      Reflection-free System.Text.Json (STJ) infrastructure parser for EssaLab Strongly Typed IDs. Automatically extracts deeply routed Domain Identifiers via precise reference assembly metadata-fingerprinting to weave high-throughput custom JsonConverter types optimally constructed entirely during C# compilation execution.
     </Description>
-    <PackageTags>sourcegenerator;roslyn;stronglytypedid;json;systemtextjson;ddd</PackageTags>
+    <PackageTags>sourcegenerator;roslyn;stronglytypedid;json;systemtextjson;ddd;serialization;webapi;performance</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
 
-    <Version>1.0.0</Version>
-    <PackageVersion>1.0.0</PackageVersion>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>2.0.0</Version>
+    <PackageVersion>2.0.0</PackageVersion>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
 
     <Authors>Redaessa7</Authors>
     <Company>EssaLab</Company>
@@ -47,11 +45,28 @@
   <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="README.md" Pack="true" PackagePath="\" />
-    <None Include="assets\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Common\" />
   </ItemGroup>
 
+  <!-- From Shared Project-->
+  <ItemGroup>
+    <Compile Include="..\EssaLab.StronglyTypedIds.Shared\**\*.cs"
+             Exclude="..\EssaLab.StronglyTypedIds.Shared\obj\**;..\EssaLab.StronglyTypedIds.Shared\bin\**"
+             LinkBase="Shared" />
+
+    <None Include="..\EssaLab.StronglyTypedIds.Shared\Assets\icon.png"
+          Pack="true"
+          PackagePath="\"
+          Visible="true"
+          LinkBase="Shared"/>
+
+  </ItemGroup>
+
+  <PropertyGroup>
+    <AddSyntheticProjectReferencesForSolutionDependencies>false</AddSyntheticProjectReferencesForSolutionDependencies>
+  </PropertyGroup>
+  
 </Project>

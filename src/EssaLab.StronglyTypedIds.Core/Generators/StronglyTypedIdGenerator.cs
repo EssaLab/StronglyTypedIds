@@ -2,6 +2,9 @@
 using System.Text;
 using EssaLab.StronglyTypedIds.Core.Common.Diagnostics;
 using EssaLab.StronglyTypedIds.Core.Common.Models;
+using EssaLab.StronglyTypedIds.Shared;
+using EssaLab.StronglyTypedIds.Shared.Helpers;
+using EssaLab.StronglyTypedIds.Shared.Templates;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,160 +17,117 @@ namespace EssaLab.StronglyTypedIds.Core.Generators;
 [Generator]
 public sealed class StronglyTypedIdGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = "EssaLab.StronglyTypedIds.Core.StronglyTypedIdAttribute";
+    private const string AttributeFullName =LibConstants.AttributeName;
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var ids = context.SyntaxProvider
+        var combinedData = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 AttributeFullName,
-                predicate: static (node, _) => node is RecordDeclarationSyntax or StructDeclarationSyntax,
+                predicate: static (node, _) => node is  TypeDeclarationSyntax , //RecordDeclarationSyntax , // or StructDeclarationSyntax
                 transform: static (ctx, _) =>
                 {
                     var symbol = (INamedTypeSymbol)ctx.TargetSymbol;
                     var typeSyntax = (TypeDeclarationSyntax)ctx.TargetNode;
 
+                    var isRecord = typeSyntax is RecordDeclarationSyntax;
+                    var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
                     var hasPartial = typeSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+                    var backingType = ctx.Attributes[0].GetBackingType();
+                    var isValueType = typeSyntax is RecordDeclarationSyntax record && 
+                                      record.ClassOrStructKeyword.IsKind(SyntaxKind.StructKeyword);
 
-                    return new IdRecordData(
+                    var gen = new IdGenerationData(
                         symbol.Name,
+                        fullName,
                         symbol.ContainingNamespace.IsGlobalNamespace ? null : symbol.ContainingNamespace.ToDisplayString(),
-                        GetBackingType(ctx.Attributes[0]),
-                        !hasPartial,
+                        backingType,
+                        isValueType);
+
+                    var diag = new IdDiagnosticData(
+                        MissingPartial:!hasPartial,
+                        IsUnsupportedType: !TemplateProvider.HasTemplateForType(backingType),
+                        NotARecord: !isRecord,
+                        symbol.Name,
+                        backingType,
                         typeSyntax.Identifier.GetLocation()
                     );
+                    
+                    return new IdCombinedData(gen, diag);
                 });
         
-        context.RegisterSourceOutput(ids, static (spc, data) =>
+        // diagnostic branch
+        context.RegisterSourceOutput(combinedData, static (spc, source) =>
         {
-            if (data.HasIssue)
+            if (source.Diagnostic.MissingPartial)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     StronglyTypedIdDiagnostics.MissingPartialKeyword,
-                    data.Location,
-                    data.Name));
+                    source.Diagnostic.Location,
+                    source.Diagnostic.Name));
+                return;
+            }
+            
+            if (source.Diagnostic.IsUnsupportedType)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    StronglyTypedIdDiagnostics.UnsupportedBackingType,
+                    source.Diagnostic.Location,
+                    source.Diagnostic.BackingType));
                 return;
             }
 
+            if (source.Diagnostic.NotARecord)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    StronglyTypedIdDiagnostics.MustBeRecord,
+                    source.Diagnostic.Location,
+                    source.Diagnostic.Name));
+                return;
+            }
+            
+        });
+        
+        // generator branch
+        var generationPipeline = combinedData
+            .Where(static x => x.Diagnostic is { NotARecord: false, IsUnsupportedType: false })
+            .Select(static (x, _) => x.Generation);
+        
+        context.RegisterSourceOutput(generationPipeline, static (spc, data) =>
+        {
+            var template = TemplateProvider.GetTemplate(data.BackingType);
+            if (template is null) return;
+            
+            var source = template.GenerateCoreCode(data.Name,data.Namespace ?? "Global", data.IsValueType);
+            var hintName = $"{data.FullName.Replace(".", "_")}.StronglyTypedId.g.cs"; 
+            spc.AddSource(hintName, source);
+        });
+        
+        
+        // generator registry
+        var registryData = generationPipeline.Collect();
+        context.RegisterSourceOutput(registryData, static (spc, source) =>
+        {
+            if(source.IsDefaultOrEmpty) return;
+
+            var distinctItems = source.Distinct().ToArray();
             var sb = new StringBuilder();
             
             sb.AppendLine("// <auto-generated/>");
-            sb.AppendLine("#nullable enable");
             sb.AppendLine("using System;");
             sb.AppendLine();
-            
-            if (data.Namespace is not null)
-            {
-                sb.AppendLine($"namespace {data.Namespace};");
-                sb.AppendLine();
-            }
-            
-            AddStronglyTypedId(sb, data);
-            spc.AddSource($"{(data.Namespace is null ? "" : data.Namespace + ".")}{data.Name}.StronglyTypedId.g.cs", sb.ToString());
-        });
-    }
-
-    private static string GetBackingType(AttributeData attrData)
-    {
-        if (attrData.ConstructorArguments.Length == 0)
-            return "Guid";
-
-        var val = attrData.ConstructorArguments[0].Value;
-        var i = val switch
-        {
-            int x => x,
-            _ => (int)val!
-        };
-
-        return i switch
-        {
-            1 => "int",
-            2 => "long",
-            _ => "Guid"
-        };
-    }
-
-    private static void AddStronglyTypedId(StringBuilder sb, IdRecordData data)
-    {
-        var name = data.Name;
-        var type = data.BackingType;
-        bool isGuid = type == "Guid";
-
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Represents a strongly-typed ID for <see cref=\"{name}\"/>.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"[System.ComponentModel.TypeConverter(typeof(System.ComponentModel.TypeConverter))]");
-        sb.AppendLine($"public partial record {name} : IComparable<{name}>, IEquatable<{name}>");
-        sb.AppendLine("{");
-        
-        // Value property
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// Gets the underlying value of the ID.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public {type} Value {{ get; init; }}");
-        sb.AppendLine();
-    
-        // Constructor
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Initializes a new instance of the <see cref=\"{name}\"/> record.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public {name}({type} value) => Value = value;");
-        sb.AppendLine();
-
-        // Factory / Empty
-        if (isGuid)
-        {
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Creates a new ID with a unique Guid.");
-            sb.AppendLine("    /// </summary>");
-            sb.AppendLine($"    public static {name} New() => new(Guid.NewGuid());");
+            sb.AppendLine("namespace EssaLab.StronglyTypedIds.Generated;");
             sb.AppendLine();
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Represents an empty ID.");
-            sb.AppendLine("    /// </summary>");
-            sb.AppendLine($"    public static {name} Empty => new(Guid.Empty);");
-        }
-        else
-        {
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Represents an empty ID.");
-            sb.AppendLine("    /// </summary>");
-            sb.AppendLine($"    public static {name} Empty => new(0);");
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("    /// <inheritdoc />");
-        sb.AppendLine("    public override string ToString() => Value.ToString();");
-        sb.AppendLine();
-
-        // Comparison
-        sb.AppendLine("    /// <inheritdoc />");
-        sb.AppendLine($"    public int CompareTo({name}? other)");
-        sb.AppendLine(isGuid 
-            ? $"        => other is null ? 1 : Value.CompareTo(other.Value);" 
-            : $"        => other is null ? 1 : Value.CompareTo(other.Value);");
-
-        sb.AppendLine();
-
-        // Explicit interface implementation if needed or just override
-        sb.AppendLine("    /// <inheritdoc />");
-        sb.AppendLine($"    public virtual bool Equals({name}? other) => other is not null && Value.Equals(other.Value);");
-        sb.AppendLine();
-        sb.AppendLine("    /// <inheritdoc />");
-        sb.AppendLine("    public override int GetHashCode() => Value.GetHashCode();");
-        sb.AppendLine();
-
-        // Operators
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Implicitly converts a <see cref=\"{name}\"/> to its underlying <see cref=\"{type}\"/>.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public static implicit operator {type}({name} id) => id?.Value ?? {(isGuid ? "Guid.Empty" : "default")};");
-        
-        sb.AppendLine();
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Explicitly converts a <see cref=\"{type}\"/> to a <see cref=\"{name}\"/>.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public static explicit operator {name}({type} value) => new(value);");
-        sb.AppendLine("}");
+            
+            foreach (var id in source)
+            {
+                sb.AppendLine($"[IdRegistry(\"{id.Name}\", {(id.Namespace == null ? "null" : $"\"{id.Namespace}\"")}, \"{id.BackingType}\")]");
+            }
+    
+            // الكلاس الفهرس اللي الـ API هيدور عليه باسمه الكامل
+            sb.AppendLine("internal static class __StronglyTypedIdsRegistry { }");
+            
+            spc.AddSource("StronglyTypedIdsRegistry.g.cs", sb.ToString());
+        });
     }
 }

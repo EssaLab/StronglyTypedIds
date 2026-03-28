@@ -15,17 +15,15 @@
     <PackageId>EssaLab.StronglyTypedIds.Convertors.EFCore</PackageId>
     <Title>EssaLab StronglyTypedIds EF Core Converters Generator</Title>
     <Description>
-      Source generator that emits EF Core ValueConverters and ValueComparers
-      for EssaLab StronglyTypedIds, enabling persistence without leaking
-      infrastructure concerns into the domain model.
+      Zero-overhead Entity Framework Core (EF Core) conversion plugin for EssaLab Strongly Typed IDs. Dynamically isolates domain assemblies by compiler fingerprint and automatically generates perfectly mapped ValueConverter rules for robust persistence modeling scaling across enterprise domains seamlessly.
     </Description>
-    <PackageTags>sourcegenerator;roslyn;stronglytypedid;efcore;ddd;valueconverter</PackageTags>
+    <PackageTags>sourcegenerator;roslyn;stronglytypedid;efcore;ddd;valueconverter;entityframeworkcore;architecture</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
 
-    <Version>1.0.0</Version>
-    <PackageVersion>1.0.0</PackageVersion>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>2.0.0</Version>
+    <PackageVersion>2.0.0</PackageVersion>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
 
     <Authors>Redaessa7</Authors>
     <Company>EssaLab</Company>
@@ -47,7 +45,25 @@
   <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="README.md" Pack="true" PackagePath="\" />
-    <None Include="assets\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
+
+
+  <!-- From Shared Project-->
+  <ItemGroup>
+    <Compile Include="..\EssaLab.StronglyTypedIds.Shared\**\*.cs"
+             Exclude="..\EssaLab.StronglyTypedIds.Shared\obj\**;..\EssaLab.StronglyTypedIds.Shared\bin\**"
+             LinkBase="Shared" />
+
+    <None Include="..\EssaLab.StronglyTypedIds.Shared\Assets\icon.png"
+          Pack="true"
+          PackagePath="\"
+          Visible="true"
+          LinkBase="Shared"/>
+
+  </ItemGroup>
+
+  <PropertyGroup>
+    <AddSyntheticProjectReferencesForSolutionDependencies>false</AddSyntheticProjectReferencesForSolutionDependencies>
+  </PropertyGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-using EssaLab.StronglyTypedIds.Convertors.Json;
+using System.Text.Json;
 using TestApp.Domain;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +12,18 @@ var app = builder.Build();
 app.MapGet("/", () =>
 {
   var orderId = OrderId.New();
-  return Results.Ok(new {id = orderId});
+  var customerId = CustomerId.Empty;
+  return Results.Ok(new
+  {
+    Guidid = orderId,
+    IntId =  customerId,
+    
+  });
+});
+
+app.MapGet("/customers/{customerId:int}", (CustomerId customerId) =>
+{
+   return Results.Ok(customerId);
 });
 
 app.Run();

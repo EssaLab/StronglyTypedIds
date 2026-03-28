@@ -1,20 +1,27 @@
-﻿// using EssaLab.StronglyTypedIds.Core;
+﻿using EssaLab.StronglyTypedIds;
 
-using EssaLab.StronglyTypedIds.Core;
+namespace TestApp.Models
+{
+    [StronglyTypedId<Guid>]
+    public partial record OrderId;
 
-namespace TestApp.Domain;
+};
 
-[StronglyTypedId]
-public partial record OrderId;
+namespace TestApp.Domain
+{
 
-[StronglyTypedId(IdType.Long)]
-public partial record CustomerId;
+    [StronglyTypedId<Guid>]
+    public partial record OrderId;
 
-// [StronglyTypedId]
-public partial record CardId;
+    [StronglyTypedId<int>]
+    public partial record struct CustomerId;
 
-// [StronglyTypedId(IdType.Long)]
-public partial record ItemId;
+    [StronglyTypedId<string>]
+    public partial record struct CardId;
 
-// [StronglyTypedId(IdType.Long)]
-public partial record MohammedId();
+    [StronglyTypedId<string>]
+    public partial record struct ItemId;
+
+[StronglyTypedId<int>]
+    public partial record struct MohammedId;
+}

@@ -1,32 +1,22 @@
 # EssaLab.StronglyTypedIds.Convertors.Json
 
-**Automatic System.Text.Json Converters for Strongly Typed IDs**
+The `System.Text.Json` source generator providing reflection-free JSON interoperability for EssaLab Strongly Typed IDs.
 
-This package extends `EssaLab.StronglyTypedIds` to provide seamless serialization and deserialization for your API layer using `System.Text.Json`.
+### Responsibilities
+Operating gracefully within ASP.NET Core presentation architectures, this library enforces high-performance and resilient serialization pipelines:
 
-## ✨ Features
-- 🚀 **High-Performance**: Uses `Utf8JsonReader` and `Utf8JsonWriter` directly for zero-alloc serialization.
-- 🛠️ **Seamless Integration**: Works out-of-the-box with ASP.NET Core controllers.
-- 🏗️ **Clean Architecture**: Designed for the **API / Web** layer.
+* **Automated Type-Safe Serialization:** Replaces generic string or object mapping operations with robust, pre-compiled `JsonConverter<T>` classes tailored exactly to the target structure.
+* **Zero-Reflection Overhead:** Serialization configurations are deeply integrated during Roslyn Source Generation phases. This strictly removes runtime reflection penalties conventionally associated with custom JsonConverters, maximizing Web API throughput requests.
+* **Metadata Fingerprint Detection:** Bypasses naive API Controller scanning mechanisms. The generator interacts with dependent Assembly Metadata Fingerprints to effortlessly discover Domain Level IDs regardless of where or whether they appear strictly in `[ApiController]` surface DTOs.
+* **Centralized Extensibility:** Produces the globally addressable extension `AddStronglyTypedIdConverters(this JsonSerializerOptions)`. This configures the entire HTTP pipeline to comprehend Domain IDs reliably.
 
-## 🏁 Quick Start
+### Best Practices
+Install this package specifically in projects managing external API configuration and presentation routing (e.g., `YourApplication.WebApi` or `YourApplication.Api`). Configure your host services once to apply the mapping:
 
-1. Install the package:
-   ```bash
-   dotnet add package EssaLab.StronglyTypedIds.Convertors.Json
-   ```
-
-2. Register in `Program.cs`:
-   ```csharp
-   using EssaLab.StronglyTypedIds.Convertors.Json;
-
-   builder.Services.AddControllers()
-       .AddJsonOptions(options =>
-       {
-           // Register all converters at once
-           options.JsonSerializerOptions.AddStronglyTypedIdConverters();
-       });
-   ```
-
-## 📜 Full Documentation
-For more details, visit the [Main Repository](https://github.com/EssaLab/StronglyTypedIds).
+```csharp
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    // Injects all Strongly Typed ID serializers seamlessly
+    options.SerializerOptions.AddStronglyTypedIdConverters();
+});
+```
